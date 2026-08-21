@@ -1,0 +1,295 @@
+{
+  "users": [
+    {
+      "id": "1779263260287",
+      "username": "testuser",
+      "email": "test@example.com",
+      "passwordHash": "$2b$10$ZwXNm82DPS7LUyCaFdYok.TVTWm4M69mO/biFqMeNc0DMi.91pjfq",
+      "walletBalance": 50,
+      "escrowHeld": 0,
+      "engineerScore": {
+        "averageRating": 0,
+        "totalRatings": 0,
+        "bugsSolved": 0
+      },
+      "tasksPosted": [
+        "1779270014644"
+      ],
+      "tasksClaimed": [],
+      "tasksCompleted": [],
+      "createdAt": "2026-05-20T07:47:40.371Z"
+    },
+    {
+      "id": "1779270135304",
+      "username": "solver1",
+      "email": "solver1@example.com",
+      "passwordHash": "$2b$10$gAjgqpFHpYFn1x5/vFVDb.cY3Y9DPlzLes8P.YZuoHtaUJrIADNQu",
+      "walletBalance": 450,
+      "escrowHeld": 0,
+      "engineerScore": {
+        "averageRating": 4.5,
+        "totalRatings": 2,
+        "bugsSolved": 2
+      },
+      "tasksPosted": [],
+      "tasksClaimed": [
+        "1779270014644",
+        "1779272773980",
+        "1779273040840"
+      ],
+      "tasksCompleted": [
+        "1779270014644",
+        "1779272773980"
+      ],
+      "createdAt": "2026-05-20T09:42:15.304Z"
+    },
+    {
+      "id": "1779272681558",
+      "username": "poster2",
+      "email": "poster2@example.com",
+      "passwordHash": "$2b$10$GlYujjqjHIeMBwz17hBR1Op9zyz7Oo/dQxa7FU.fFvMATD5UAxzPK",
+      "walletBalance": 300,
+      "escrowHeld": 400,
+      "engineerScore": {
+        "averageRating": 0,
+        "totalRatings": 0,
+        "bugsSolved": 0
+      },
+      "tasksPosted": [
+        "1779272773980",
+        "1779273040840"
+      ],
+      "tasksClaimed": [],
+      "tasksCompleted": [],
+      "createdAt": "2026-05-20T10:24:41.558Z"
+    },
+    {
+      "id": "1779370924838",
+      "username": "abhishek",
+      "email": "1234@gmail.com",
+      "passwordHash": "$2b$10$kfsDaxj.DxOdgDDVnUqDnuh681xpLVkyN00VEff6sjnM00TTngd/C",
+      "walletBalance": 100,
+      "escrowHeld": 0,
+      "engineerScore": {
+        "averageRating": 0,
+        "totalRatings": 0,
+        "bugsSolved": 0
+      },
+      "tasksPosted": [
+        "1779389607434",
+        "1786817943233"
+      ],
+      "tasksClaimed": [],
+      "tasksCompleted": [],
+      "createdAt": "2026-05-21T13:42:04.838Z"
+    },
+    {
+      "id": "1779392235829",
+      "username": "solver",
+      "email": "solver@gmail.com",
+      "passwordHash": "$2b$10$qbTYJBvDzTzvREizktyLquiyUO126MAGCXyb.fwgCnVLZuTo5rxK.",
+      "walletBalance": 1100,
+      "escrowHeld": 0,
+      "engineerScore": {
+        "averageRating": 3,
+        "totalRatings": 1,
+        "bugsSolved": 1
+      },
+      "tasksPosted": [],
+      "tasksClaimed": [
+        "1779389607434"
+      ],
+      "tasksCompleted": [
+        "1779389607434"
+      ],
+      "createdAt": "2026-05-21T19:37:15.829Z"
+    },
+    {
+      "id": "1786817245549",
+      "username": "abhi",
+      "email": "abhi@123.com",
+      "passwordHash": "$2b$10$QJUuRUcXefCyWZxkdaRHRelFxUJyhFKHXHE9Fhbi4eDaMrVVDMSoK",
+      "walletBalance": 1200,
+      "escrowHeld": 600,
+      "engineerScore": {
+        "averageRating": 5,
+        "totalRatings": 1,
+        "bugsSolved": 1
+      },
+      "tasksPosted": [
+        "1786820455948",
+        "1786821009430",
+        "1786822153458"
+      ],
+      "tasksClaimed": [
+        "1786817943233"
+      ],
+      "tasksCompleted": [
+        "1786817943233"
+      ],
+      "createdAt": "2026-08-15T18:07:25.549Z"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "1779270014644",
+      "title": "Fix Login Bug",
+      "description": "The login page is not accepting valid passwords. Please debug and fix the authentication issue.",
+      "bounty": 50,
+      "postedBy": "1779263260287",
+      "status": "approved",
+      "claimedBy": "1779270135304",
+      "claimedAt": "2026-05-20T09:48:37.995Z",
+      "claimDeadline": "2026-05-20T12:48:37.995Z",
+      "deadlineHours": 3,
+      "proofOfWork": "https://github.com/user/repo/pull/123 - Fixed the login authentication issue. The problem was in the JWT token validation. Added proper error handling and tested with multiple scenarios.",
+      "submittedAt": "2026-05-20T09:51:35.820Z",
+      "approvedAt": "2026-05-20T10:13:48.918Z",
+      "rating": 5,
+      "escrowResolved": true,
+      "escrowResolvedAt": "2026-05-20T10:13:48.918Z",
+      "escrowSplitRatio": null,
+      "createdAt": "2026-05-20T09:40:14.658Z"
+    },
+    {
+      "id": "1779272773980",
+      "title": "Build API Endpoint",
+      "description": "Create a REST API endpoint for user authentication. Should include JWT token generation, password hashing with bcrypt, and proper error handling.",
+      "bounty": 300,
+      "postedBy": "1779272681558",
+      "status": "approved",
+      "claimedBy": "1779270135304",
+      "claimedAt": "2026-05-20T10:27:24.457Z",
+      "claimDeadline": "2026-05-20T14:27:24.457Z",
+      "deadlineHours": 4,
+      "proofOfWork": "https://github.com/solver/auth-api/pull/456 - Implemented JWT authentication endpoint with bcrypt password hashing, proper error handling, and unit tests. All endpoints tested and working.",
+      "submittedAt": "2026-05-20T10:28:04.410Z",
+      "approvedAt": "2026-05-20T10:28:27.372Z",
+      "rating": 4,
+      "escrowResolved": true,
+      "escrowResolvedAt": "2026-05-20T10:28:27.372Z",
+      "escrowSplitRatio": null,
+      "createdAt": "2026-05-20T10:26:13.980Z"
+    },
+    {
+      "id": "1779273040840",
+      "title": "Fix Database Query Performance",
+      "description": "Optimize slow database queries that are causing 5+ second response times. Profile the queries and implement proper indexing.",
+      "bounty": 400,
+      "postedBy": "1779272681558",
+      "status": "under-review",
+      "claimedBy": "1779270135304",
+      "claimedAt": "2026-05-20T10:32:01.171Z",
+      "claimDeadline": "2026-05-20T12:32:01.171Z",
+      "deadlineHours": 2,
+      "proofOfWork": "https://github.com/solver/db-optimization/pull/789 - Added indexes to user_id and created_at columns. Query response time reduced from 5.2s to 0.3s. Used EXPLAIN ANALYZE to verify optimization.",
+      "submittedAt": "2026-05-20T10:33:58.028Z",
+      "approvedAt": null,
+      "rating": null,
+      "escrowResolved": false,
+      "escrowResolvedAt": null,
+      "escrowSplitRatio": null,
+      "createdAt": "2026-05-20T10:30:40.840Z"
+    },
+    {
+      "id": "1779389607434",
+      "title": "website for ice cream shop",
+      "description": "make a good looking minimal website for icescream shop name shantushti\nnot over complex just basics and a page for order icecreams\n",
+      "bounty": 100,
+      "postedBy": "1779370924838",
+      "status": "approved",
+      "claimedBy": "1779392235829",
+      "claimedAt": "2026-05-21T19:37:44.491Z",
+      "claimDeadline": "2026-05-22T01:37:44.491Z",
+      "deadlineHours": 6,
+      "proofOfWork": "qwertyuiop",
+      "submittedAt": "2026-05-21T20:27:01.500Z",
+      "approvedAt": "2026-08-15T18:47:41.150Z",
+      "rating": 3,
+      "escrowResolved": true,
+      "escrowResolvedAt": "2026-08-15T18:47:41.150Z",
+      "escrowSplitRatio": null,
+      "createdAt": "2026-05-21T18:53:27.434Z"
+    },
+    {
+      "id": "1786817943233",
+      "title": "make a website for bakery",
+      "description": "make a fully  functionable website for a bakery where the owner can take online order also",
+      "bounty": 800,
+      "postedBy": "1779370924838",
+      "status": "approved",
+      "claimedBy": "1786817245549",
+      "claimedAt": "2026-08-15T18:20:01.653Z",
+      "claimDeadline": "2026-08-17T18:20:01.653Z",
+      "deadlineHours": 48,
+      "proofOfWork": "trdxcouiibp;kjn;lk'lkn'kjiohphp;kj;kn",
+      "submittedAt": "2026-08-15T19:34:06.694Z",
+      "approvedAt": "2026-08-15T19:34:57.429Z",
+      "rating": 5,
+      "escrowResolved": true,
+      "escrowResolvedAt": "2026-08-15T19:34:57.429Z",
+      "escrowSplitRatio": null,
+      "createdAt": "2026-08-15T18:19:03.233Z"
+    },
+    {
+      "id": "1786820455948",
+      "title": "12345",
+      "description": "123456789gfdxfjchvjhgcfxhhdghvbjlkdfvbjlkjsdg",
+      "bounty": 400,
+      "postedBy": "1786817245549",
+      "status": "open",
+      "claimedBy": null,
+      "claimedAt": null,
+      "claimDeadline": null,
+      "deadlineHours": 12,
+      "proofOfWork": null,
+      "submittedAt": null,
+      "approvedAt": null,
+      "rating": null,
+      "escrowResolved": false,
+      "escrowResolvedAt": null,
+      "escrowSplitRatio": null,
+      "createdAt": "2026-08-15T19:00:55.948Z"
+    },
+    {
+      "id": "1786821009430",
+      "title": "qwertyujhgfxcvb",
+      "description": "awsedrftgyhujikoxdcfgvbhjnrt",
+      "bounty": 100,
+      "postedBy": "1786817245549",
+      "status": "open",
+      "claimedBy": null,
+      "claimedAt": null,
+      "claimDeadline": null,
+      "deadlineHours": 2,
+      "proofOfWork": null,
+      "submittedAt": null,
+      "approvedAt": null,
+      "rating": null,
+      "escrowResolved": false,
+      "escrowResolvedAt": null,
+      "escrowSplitRatio": null,
+      "createdAt": "2026-08-15T19:10:09.431Z"
+    },
+    {
+      "id": "1786822153458",
+      "title": "asdfghjk",
+      "description": "asdfghjkgdfgxgckvjhk",
+      "bounty": 100,
+      "postedBy": "1786817245549",
+      "status": "open",
+      "claimedBy": null,
+      "claimedAt": null,
+      "claimDeadline": null,
+      "deadlineHours": 2,
+      "proofOfWork": null,
+      "submittedAt": null,
+      "approvedAt": null,
+      "rating": null,
+      "escrowResolved": false,
+      "escrowResolvedAt": null,
+      "escrowSplitRatio": null,
+      "createdAt": "2026-08-15T19:29:13.458Z"
+    }
+  ]
+}
