@@ -24,12 +24,12 @@
       "username": "solver1",
       "email": "solver1@example.com",
       "passwordHash": "$2b$10$gAjgqpFHpYFn1x5/vFVDb.cY3Y9DPlzLes8P.YZuoHtaUJrIADNQu",
-      "walletBalance": 450,
+      "walletBalance": 650,
       "escrowHeld": 0,
       "engineerScore": {
         "averageRating": 4.5,
         "totalRatings": 2,
-        "bugsSolved": 2
+        "bugsSolved": 3
       },
       "tasksPosted": [],
       "tasksClaimed": [
@@ -39,7 +39,8 @@
       ],
       "tasksCompleted": [
         "1779270014644",
-        "1779272773980"
+        "1779272773980",
+        "1779273040840"
       ],
       "createdAt": "2026-05-20T09:42:15.304Z"
     },
@@ -48,8 +49,8 @@
       "username": "poster2",
       "email": "poster2@example.com",
       "passwordHash": "$2b$10$GlYujjqjHIeMBwz17hBR1Op9zyz7Oo/dQxa7FU.fFvMATD5UAxzPK",
-      "walletBalance": 300,
-      "escrowHeld": 400,
+      "walletBalance": 500,
+      "escrowHeld": 0,
       "engineerScore": {
         "averageRating": 0,
         "totalRatings": 0,
@@ -177,7 +178,7 @@
       "description": "Optimize slow database queries that are causing 5+ second response times. Profile the queries and implement proper indexing.",
       "bounty": 400,
       "postedBy": "1779272681558",
-      "status": "under-review",
+      "status": "abandoned",
       "claimedBy": "1779270135304",
       "claimedAt": "2026-05-20T10:32:01.171Z",
       "claimDeadline": "2026-05-20T12:32:01.171Z",
@@ -186,9 +187,12 @@
       "submittedAt": "2026-05-20T10:33:58.028Z",
       "approvedAt": null,
       "rating": null,
-      "escrowResolved": false,
-      "escrowResolvedAt": null,
-      "escrowSplitRatio": null,
+      "escrowResolved": true,
+      "escrowResolvedAt": "2026-08-22T19:47:04.617Z",
+      "escrowSplitRatio": {
+        "solverPercentage": 50,
+        "posterPercentage": 50
+      },
       "createdAt": "2026-05-20T10:30:40.840Z"
     },
     {
