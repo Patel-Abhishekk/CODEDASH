@@ -435,5 +435,85 @@ const checkAndResolveGhosting = async (req, res) => {
   }
 };
 
+// Auto-resolve ghosting (48-hour abandonment)
+const autoResolveGhosting = async (req, res) => {
+  try {
+    const db = readDB();
+    const currentTime = new Date();
+    let resolvedCount = 0;
 
-module.exports = { postTask, getOpenTasks, getTaskById, claimTask, submitProof, approveTask, checkAndResolveGhosting };
+    // Find all tasks that are under-review
+    const underReviewTasks = db.tasks.filter(t => t.status === 'under-review');
+
+    underReviewTasks.forEach(task => {
+      // Check if 48 hours have passed since submission
+      const submittedTime = new Date(task.submittedAt);
+      const hoursElapsed = (currentTime - submittedTime) / (1000 * 60 * 60);
+
+      if (hoursElapsed >= 48) {
+        // 48 hours passed - apply 50/50 ghosting rule
+        const halfBounty = task.bounty / 2;
+
+        // Find solver and poster
+        const solver = db.users.find(u => u.id === task.claimedBy);
+        const poster = db.users.find(u => u.id === task.postedBy);
+
+        if (solver && poster) {
+          // Give 50% to solver
+          solver.walletBalance += halfBounty;
+          solver.tasksCompleted.push(task.id);
+          solver.engineerScore.bugsSolved += 1;
+
+          // Refund 50% to poster
+          poster.walletBalance += halfBounty;
+          poster.escrowHeld -= task.bounty;
+
+          // Mark task as abandoned
+          task.status = 'abandoned';
+          task.escrowResolved = true;
+          task.escrowResolvedAt = currentTime;
+          task.escrowSplitRatio = {
+            solverPercentage: 50,
+            posterPercentage: 50,
+          };
+
+          // Update users in database
+          const solverIndex = db.users.findIndex(u => u.id === task.claimedBy);
+          const posterIndex = db.users.findIndex(u => u.id === task.postedBy);
+
+          if (solverIndex !== -1) {
+            db.users[solverIndex] = solver;
+          }
+          if (posterIndex !== -1) {
+            db.users[posterIndex] = poster;
+          }
+
+          resolvedCount++;
+        }
+      }
+    });
+
+    // Update all modified tasks in database
+    underReviewTasks.forEach(task => {
+      const taskIndex = db.tasks.findIndex(t => t.id === task.id);
+      if (taskIndex !== -1) {
+        db.tasks[taskIndex] = task;
+      }
+    });
+
+    // Write updated database
+    writeDB(db);
+
+    console.log(`Auto-resolved ${resolvedCount} abandoned tasks`);
+
+    // Return results
+    res.status(200).json({
+      message: `Checked ghosting. ${resolvedCount} task(s) auto-resolved with 50/50 split.`,
+      resolvedCount: resolvedCount,
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+module.exports = { postTask, getOpenTasks, getTaskById, claimTask, submitProof, approveTask, checkAndResolveGhosting, autoResolveGhosting };
