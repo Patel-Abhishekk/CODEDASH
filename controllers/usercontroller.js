@@ -114,4 +114,25 @@ const loginUser = async (req, res) => {
   }
 };
 
-module.exports = { registerUser, loginUser };
+// Get user profile by ID
+const getUserById = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const db = readDB();
+
+    const user = db.users.find(u => u.id === userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const { passwordHash, ...userWithoutPassword } = user;
+    res.status(200).json({
+      message: 'User fetched successfully',
+      user: userWithoutPassword,
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+module.exports = { registerUser, loginUser, getUserById };

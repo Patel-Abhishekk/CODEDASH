@@ -516,4 +516,68 @@ const autoResolveGhosting = async (req, res) => {
   }
 };
 
-module.exports = { postTask, getOpenTasks, getTaskById, claimTask, submitProof, approveTask, checkAndResolveGhosting, autoResolveGhosting };
+// Delete task (only open tasks by poster)
+const deleteTask = async (req, res) => {
+  try {
+    const { taskId, userId } = req.body;
+
+    // Validate request body
+    if (!taskId || !userId) {
+      return res.status(400).json({ message: 'Missing required fields' });
+    }
+
+    // Read database
+    const db = readDB();
+
+    // Find task by taskId
+    const task = db.tasks.find(t => t.id === taskId);
+    if (!task) {
+      return res.status(400).json({ message: 'Task not found' });
+    }
+
+    // Validate poster
+    if (task.postedBy !== userId) {
+      return res.status(400).json({ message: 'Only the task poster can delete this task' });
+    }
+
+    // Validate status is open ONLY
+    if (task.status !== 'open') {
+      return res.status(400).json({ message: 'Only open tasks can be deleted' });
+    }
+
+    // Find user
+    const user = db.users.find(u => u.id === userId);
+    if (!user) {
+      return res.status(400).json({ message: 'User not found' });
+    }
+
+    // Refund bounty to user's wallet & subtract from escrow
+    user.walletBalance += task.bounty;
+    user.escrowHeld -= task.bounty;
+
+    // Remove task from tasksPosted array
+    user.tasksPosted = (user.tasksPosted || []).filter(id => id !== taskId);
+
+    // Update user in database
+    const userIndex = db.users.findIndex(u => u.id === userId);
+    if (userIndex !== -1) {
+      db.users[userIndex] = user;
+    }
+
+    // Delete task from database
+    db.tasks = db.tasks.filter(t => t.id !== taskId);
+
+    // Write updated database
+    writeDB(db);
+
+    // Return success response
+    res.status(200).json({
+      message: 'Task deleted successfully',
+      user: user,
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+module.exports = { postTask, getOpenTasks, getTaskById, claimTask, submitProof, approveTask, checkAndResolveGhosting, autoResolveGhosting, deleteTask };

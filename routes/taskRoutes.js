@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { postTask, getOpenTasks, getTaskById, claimTask, submitProof, approveTask, checkAndResolveGhosting, autoResolveGhosting } = require('../controllers/taskController');
+const { postTask, getOpenTasks, getTaskById, claimTask, submitProof, approveTask, checkAndResolveGhosting, autoResolveGhosting, deleteTask } = require('../controllers/taskController');
 router.post('/', postTask);
 
 // GET /api/tasks - Get all open tasks (feed)
@@ -11,6 +11,9 @@ router.get('/:taskId', getTaskById);
 
 // POST /api/tasks/claim - Claim a task
 router.post('/claim', claimTask);
+
+// POST /api/tasks/delete - Delete an open task
+router.post('/delete', deleteTask);
 
 // POST /api/tasks/submit-proof - Submit proof of work
 router.post('/submit-proof', submitProof);
