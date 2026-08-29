@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { postTask, getOpenTasks, getTaskById, claimTask, submitProof, approveTask, checkAndResolveGhosting, autoResolveGhosting, deleteTask } = require('../controllers/taskController');
+const { postTask, getOpenTasks, getTaskById, claimTask, submitProof, approveTask, checkAndResolveGhosting, autoResolveGhosting, deleteTask, rejectTask } = require('../controllers/taskController');
 router.post('/', postTask);
 
 // GET /api/tasks - Get all open tasks (feed)
@@ -19,6 +19,8 @@ router.post('/delete', deleteTask);
 router.post('/submit-proof', submitProof);
 // POST /api/tasks/approve - Approve task and give rating
 router.post('/approve', approveTask);
+// POST /api/tasks/reject - Reject proof and request revision
+router.post('/reject', rejectTask);
 // POST /api/tasks/check-ghosting - Check and resolve 48-hour ghosting
 router.post('/check-ghosting', checkAndResolveGhosting);
 // POST /api/tasks/auto-resolve-ghosting - Auto-resolve abandoned tasks

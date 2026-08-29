@@ -445,6 +445,8 @@ const autoResolveGhosting = async (req, res) => {
     // Find all tasks that are under-review
     const underReviewTasks = db.tasks.filter(t => t.status === 'under-review');
 
+    const resolvedTasksList = [];
+
     underReviewTasks.forEach(task => {
       // Check if 48 hours have passed since submission
       const submittedTime = new Date(task.submittedAt);
@@ -489,6 +491,13 @@ const autoResolveGhosting = async (req, res) => {
           }
 
           resolvedCount++;
+          resolvedTasksList.push({
+            id: task.id,
+            title: task.title,
+            bounty: task.bounty,
+            refund: halfBounty,
+            solverPayment: halfBounty,
+          });
         }
       }
     });
@@ -510,6 +519,7 @@ const autoResolveGhosting = async (req, res) => {
     res.status(200).json({
       message: `Checked ghosting. ${resolvedCount} task(s) auto-resolved with 50/50 split.`,
       resolvedCount: resolvedCount,
+      resolvedTasks: resolvedTasksList,
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -580,4 +590,86 @@ const deleteTask = async (req, res) => {
   }
 };
 
-module.exports = { postTask, getOpenTasks, getTaskById, claimTask, submitProof, approveTask, checkAndResolveGhosting, autoResolveGhosting, deleteTask };
+// Reject task proof of work and request revision
+const rejectTask = async (req, res) => {
+  try {
+    const { taskId, userId, rejectionReason } = req.body;
+
+    // Validate request body
+    if (!taskId || !userId || !rejectionReason) {
+      return res.status(400).json({ message: 'Missing required fields' });
+    }
+
+    // Validate rejection reason length
+    if (typeof rejectionReason !== 'string' || rejectionReason.trim().length < 10) {
+      return res.status(400).json({ message: 'Rejection reason must be at least 10 characters' });
+    }
+
+    // Read database
+    const db = readDB();
+
+    // Find task by taskId
+    const task = db.tasks.find(t => t.id === taskId);
+    if (!task) {
+      return res.status(400).json({ message: 'Task not found' });
+    }
+
+    // Validate only poster can reject
+    if (task.postedBy !== userId) {
+      return res.status(400).json({ message: 'Only the poster can reject this task' });
+    }
+
+    // Validate task status is under-review ONLY
+    if (task.status !== 'under-review') {
+      return res.status(400).json({ message: 'Task must be under-review to reject' });
+    }
+
+    // Reject task logic: change status back to claimed, clear proof & submittedAt, set rejection fields
+    task.status = 'claimed';
+    task.proofOfWork = null;
+    task.submittedAt = null;
+    task.rejectionReason = rejectionReason.trim();
+    task.rejectedAt = new Date();
+    task.rejectionCount = (task.rejectionCount || 0) + 1;
+
+    // Find solver user and add notification
+    const solver = db.users.find(u => u.id === task.claimedBy);
+    if (solver) {
+      if (!solver.notifications) {
+        solver.notifications = [];
+      }
+      solver.notifications.push({
+        type: 'task_rejected',
+        taskId: task.id,
+        reason: rejectionReason.trim(),
+        createdAt: new Date(),
+      });
+      const solverIndex = db.users.findIndex(u => u.id === task.claimedBy);
+      if (solverIndex !== -1) {
+        db.users[solverIndex] = solver;
+      }
+    }
+
+    // Update task in database
+    const taskIndex = db.tasks.findIndex(t => t.id === taskId);
+    if (taskIndex !== -1) {
+      db.tasks[taskIndex] = task;
+    }
+
+    // Write updated database
+    writeDB(db);
+
+    // Return success
+    res.status(200).json({
+      message: 'Task rejected and requested revision successfully',
+      task: task,
+      rejectionReason: task.rejectionReason,
+      rejectedAt: task.rejectedAt,
+      rejectionCount: task.rejectionCount,
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+module.exports = { postTask, getOpenTasks, getTaskById, claimTask, submitProof, approveTask, checkAndResolveGhosting, autoResolveGhosting, deleteTask, rejectTask };
