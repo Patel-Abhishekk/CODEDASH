@@ -262,5 +262,57 @@
       "escrowSplitRatio": null,
       "createdAt": "2026-08-29T09:38:38.072Z"
     }
+  ],
+  "chats": [
+    {
+      "id": "1788102578626",
+      "taskId": "1779270014644",
+      "senderId": "1779263260287",
+      "receiverId": "1779270135304",
+      "message": "Test message from automated script",
+      "timestamp": "2026-08-30T15:09:38.626Z",
+      "read": false,
+      "createdAt": "2026-08-30T15:09:38.628Z"
+    },
+    {
+      "id": "1788102585536",
+      "taskId": "1779270014644",
+      "senderId": "1779263260287",
+      "receiverId": "1779270135304",
+      "message": "Hello, this is a test message.",
+      "timestamp": "2026-08-30T15:09:45.536Z",
+      "read": false,
+      "createdAt": "2026-08-30T15:09:45.539Z"
+    },
+    {
+      "id": "1788104947302",
+      "taskId": "1787996318072",
+      "senderId": "1786817245549",
+      "receiverId": "1779370924838",
+      "message": "helllo",
+      "timestamp": "2026-08-30T15:49:07.302Z",
+      "read": true,
+      "createdAt": "2026-08-30T15:49:07.302Z"
+    },
+    {
+      "id": "1788104984003",
+      "taskId": "1787996318072",
+      "senderId": "1786817245549",
+      "receiverId": "1779370924838",
+      "message": "what i have to upload  for the proof",
+      "timestamp": "2026-08-30T15:49:44.003Z",
+      "read": true,
+      "createdAt": "2026-08-30T15:49:44.003Z"
+    },
+    {
+      "id": "1788104985638",
+      "taskId": "1787996318072",
+      "senderId": "1786817245549",
+      "receiverId": "1779370924838",
+      "message": "??",
+      "timestamp": "2026-08-30T15:49:45.638Z",
+      "read": true,
+      "createdAt": "2026-08-30T15:49:45.638Z"
+    }
   ]
 }

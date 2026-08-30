@@ -84,16 +84,26 @@ if (bounty > MAX_BOUNTY) {
   }
 };
 
+const enrichTask = (task, users = []) => {
+  if (!task) return task;
+  const poster = users.find(u => u.id === task.postedBy);
+  const solver = task.claimedBy ? users.find(u => u.id === task.claimedBy) : null;
+  return {
+    ...task,
+    postedByUsername: poster ? poster.username : 'Unknown',
+    claimedByUsername: solver ? solver.username : null,
+  };
+};
+
 // Get all open tasks (feed)
 const getOpenTasks = async (req, res) => {
   try {
     const db = readDB();
-    // Return ALL tasks (not just open ones)
-    // The frontend will filter them based on activeTab
-    const allTasks = db.tasks;
+    const users = db.users || [];
+    const enrichedTasks = (db.tasks || []).map(task => enrichTask(task, users));
     res.status(200).json({
       message: 'Tasks fetched',
-      tasks: allTasks,
+      tasks: enrichedTasks,
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -106,6 +116,7 @@ const getTaskById = async (req, res) => {
     const { taskId } = req.params;
 
     const db = readDB();
+    const users = db.users || [];
 
     // Find task
     const task = db.tasks.find(t => t.id === taskId);
@@ -115,7 +126,7 @@ const getTaskById = async (req, res) => {
 
     res.status(200).json({
       message: 'Task fetched',
-      task: task,
+      task: enrichTask(task, users),
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
