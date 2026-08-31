@@ -135,4 +135,53 @@ const getUserById = async (req, res) => {
   }
 };
 
-module.exports = { registerUser, loginUser, getUserById };
+// Get user notifications by ID
+const getUserNotifications = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const db = readDB();
+
+    const user = db.users.find(u => u.id === userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const notifications = user.notifications || [];
+    res.status(200).json({
+      message: 'Notifications fetched successfully',
+      notifications: [...notifications].reverse(), // newest first
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Mark notifications as read
+const markNotificationsRead = async (req, res) => {
+  try {
+    const { userId } = req.body;
+    const db = readDB();
+
+    const userIndex = db.users.findIndex(u => u.id === userId);
+    if (userIndex === -1) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const user = db.users[userIndex];
+    if (user.notifications) {
+      user.notifications.forEach(n => {
+        n.read = true;
+      });
+    }
+
+    db.users[userIndex] = user;
+    writeDB(db);
+
+    res.status(200).json({ message: 'Notifications marked as read' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+module.exports = { registerUser, loginUser, getUserById, getUserNotifications, markNotificationsRead };
+

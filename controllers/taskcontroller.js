@@ -181,6 +181,22 @@ console.log('User ID:', userId);
       user.tasksClaimed.push(taskId);
     }
 
+    // Notify task poster
+    const poster = db.users.find(u => u.id === task.postedBy);
+    if (poster) {
+      if (!poster.notifications) poster.notifications = [];
+      poster.notifications.push({
+        id: Date.now().toString(),
+        type: 'task_claimed',
+        taskId: task.id,
+        taskTitle: task.title,
+        message: `Your task "${task.title}" was claimed by ${user ? user.username : 'a developer'}.`,
+        createdAt: new Date(),
+      });
+      const posterIndex = db.users.findIndex(u => u.id === task.postedBy);
+      if (posterIndex !== -1) db.users[posterIndex] = poster;
+    }
+
     // Find and update task in database
     const taskIndex = db.tasks.findIndex(t => t.id === taskId);
     db.tasks[taskIndex] = task;
@@ -253,6 +269,22 @@ const submitProof = async (req, res) => {
     task.proofOfWork = proofOfWork;
     task.submittedAt = new Date();
     task.status = 'under-review';
+
+    // Notify task poster
+    const poster = db.users.find(u => u.id === task.postedBy);
+    if (poster) {
+      if (!poster.notifications) poster.notifications = [];
+      poster.notifications.push({
+        id: Date.now().toString(),
+        type: 'proof_submitted',
+        taskId: task.id,
+        taskTitle: task.title,
+        message: `Proof of work submitted for "${task.title}". Ready for your review!`,
+        createdAt: new Date(),
+      });
+      const posterIndex = db.users.findIndex(u => u.id === task.postedBy);
+      if (posterIndex !== -1) db.users[posterIndex] = poster;
+    }
 
     // Find and update task in database
     const taskIndex = db.tasks.findIndex(t => t.id === taskId);
@@ -329,6 +361,17 @@ const approveTask = async (req, res) => {
     solver.walletBalance += task.bounty;
     solver.tasksCompleted.push(taskId);
     solver.engineerScore.bugsSolved += 1;
+
+    // Add notification for solver
+    if (!solver.notifications) solver.notifications = [];
+    solver.notifications.push({
+      id: Date.now().toString(),
+      type: 'task_approved',
+      taskId: task.id,
+      taskTitle: task.title,
+      message: `Your solution for "${task.title}" was approved! ₹${task.bounty} added to your wallet. Rating: ${rating} ⭐`,
+      createdAt: new Date(),
+    });
 
     // Update solver's moving average rating
     const totalRatings = solver.engineerScore.totalRatings;
