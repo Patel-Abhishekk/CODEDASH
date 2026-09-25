@@ -8,10 +8,15 @@ console.log('Database path:', dbPath);
 const readDB = () => {
   try {
     const data = fs.readFileSync(dbPath, 'utf-8');
-    return JSON.parse(data);
+    const db = JSON.parse(data);
+    if (!db.users) db.users = [];
+    if (!db.tasks) db.tasks = [];
+    if (!db.chats) db.chats = [];
+    if (!db.notifications) db.notifications = [];
+    return db;
   } catch (error) {
     console.error('Error reading database:', error);
-    return { users: [], tasks: [] };
+    return { users: [], tasks: [], chats: [], notifications: [] };
   }
 };
 

@@ -1,10 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const { postTask, getOpenTasks, getTaskById, claimTask, submitProof, approveTask, checkAndResolveGhosting, autoResolveGhosting, deleteTask, rejectTask } = require('../controllers/taskController');
+const { postTask, getOpenTasks, getTaskById, claimTask, submitProof, approveTask, checkAndResolveGhosting, autoResolveGhosting, deleteTask, rejectTask, searchTasks } = require('../controllers/taskController');
 router.post('/', postTask);
 
 // GET /api/tasks - Get all open tasks (feed)
 router.get('/', getOpenTasks);
+
+// GET /api/tasks/search - Search, filter, and sort tasks
+router.get('/search', searchTasks);
 
 // GET /api/tasks/:taskId - Get task by ID
 router.get('/:taskId', getTaskById);

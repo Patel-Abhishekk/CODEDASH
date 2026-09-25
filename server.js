@@ -7,7 +7,9 @@ const { connectDB } = require('./config/db');
 const userRoutes = require('./routes/userRoutes');
 const taskRoutes = require('./routes/taskRoutes');
 const chatRoutes = require('./routes/chatRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
 const { validateChatAccess, saveChatMessage } = require('./controllers/chatController');
+const { setSocketIO, createNotification } = require('./controllers/notificationController');
 
 // Connect to MongoDB / JSON DB
 connectDB();
@@ -24,6 +26,9 @@ const io = socketIo(server, {
   },
 });
 
+// Pass Socket.io instance to notification controller for real-time alerts
+setSocketIO(io);
+
 // Middleware
 app.use(cors());
 app.use(express.json());
@@ -32,6 +37,7 @@ app.use(express.json());
 app.use('/api/users', userRoutes);
 app.use('/api/tasks', taskRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Test route to check if server is running
 app.get('/api/health', (req, res) => {
@@ -41,6 +47,15 @@ app.get('/api/health', (req, res) => {
 // Socket.io event handling
 io.on('connection', (socket) => {
   console.log(`⚡ Socket connected: ${socket.id}`);
+
+  // Join user room for targeted notifications
+  socket.on('join-user', (userId) => {
+    if (userId) {
+      const room = `user-${userId}`;
+      socket.join(room);
+      console.log(`🔔 User ${userId} joined room ${room}`);
+    }
+  });
 
   // Join task chat room
   socket.on('join-task', ({ taskId, userId }, callback) => {
@@ -74,17 +89,51 @@ io.on('connection', (socket) => {
   // Send message
   socket.on('send-message', async ({ taskId, userId, message }, callback) => {
     try {
+      const access = validateChatAccess(taskId, userId);
       const savedChat = await saveChatMessage(taskId, userId, message);
       const roomName = `task-${taskId}`;
       
       // Broadcast to room (both sender and receiver)
       io.to(roomName).emit('receive-message', savedChat);
 
+      // Trigger real-time notification to receiver
+      if (access && access.otherUserId) {
+        const { readDB } = require('./config/db');
+        const db = readDB();
+        const sender = (db.users || []).find(u => String(u.id) === String(userId));
+        const senderName = sender ? sender.username : 'Someone';
+        createNotification(
+          access.otherUserId,
+          'new_message',
+          taskId,
+          `New message from ${senderName}`,
+          userId,
+          {
+            preview: message.length > 60 ? `${message.substring(0, 60)}...` : message,
+            senderUsername: senderName,
+            taskTitle: access.task?.title || 'Task',
+          },
+          `/messages`
+        );
+      }
+
       if (callback) callback({ success: true, message: savedChat });
     } catch (err) {
       console.error('Error saving socket message:', err.message);
       if (callback) callback({ error: err.message });
       socket.emit('chat-error', { message: err.message });
+    }
+  });
+
+  // Real-time task-claimed event
+  socket.on('task-claimed', ({ taskId, posterId, solverUsername }) => {
+    if (posterId) {
+      io.to(`user-${posterId}`).emit('notification', {
+        type: 'task_claimed',
+        message: `${solverUsername || 'A solver'} claimed your task`,
+        taskId,
+        createdAt: new Date().toISOString(),
+      });
     }
   });
 

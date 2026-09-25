@@ -1,5 +1,6 @@
 const { readDB, writeDB } = require('../config/db');
 const { MIN_BOUNTY, MAX_BOUNTY } = require('../constants');
+const { createNotification } = require('./notificationController');
 // Post a new task
 const postTask = async (req, res) => {
   try {
@@ -181,22 +182,6 @@ console.log('User ID:', userId);
       user.tasksClaimed.push(taskId);
     }
 
-    // Notify task poster
-    const poster = db.users.find(u => u.id === task.postedBy);
-    if (poster) {
-      if (!poster.notifications) poster.notifications = [];
-      poster.notifications.push({
-        id: Date.now().toString(),
-        type: 'task_claimed',
-        taskId: task.id,
-        taskTitle: task.title,
-        message: `Your task "${task.title}" was claimed by ${user ? user.username : 'a developer'}.`,
-        createdAt: new Date(),
-      });
-      const posterIndex = db.users.findIndex(u => u.id === task.postedBy);
-      if (posterIndex !== -1) db.users[posterIndex] = poster;
-    }
-
     // Find and update task in database
     const taskIndex = db.tasks.findIndex(t => t.id === taskId);
     db.tasks[taskIndex] = task;
@@ -209,6 +194,22 @@ console.log('User ID:', userId);
 
     // Write updated database
     writeDB(db);
+
+    // Notify task poster with rich notification and Socket.io broadcast
+    createNotification(
+      task.postedBy,
+      'task_claimed',
+      task.id,
+      `${user ? user.username : 'A developer'} claimed your task: ${task.title}`,
+      userId,
+      {
+        taskTitle: task.title,
+        solverUsername: user ? user.username : 'A developer',
+        bounty: task.bounty,
+        deadlineHours: task.deadlineHours || 2,
+      },
+      `/task/${task.id}`
+    );
 
     // Return success
     res.status(200).json({
@@ -270,28 +271,28 @@ const submitProof = async (req, res) => {
     task.submittedAt = new Date();
     task.status = 'under-review';
 
-    // Notify task poster
-    const poster = db.users.find(u => u.id === task.postedBy);
-    if (poster) {
-      if (!poster.notifications) poster.notifications = [];
-      poster.notifications.push({
-        id: Date.now().toString(),
-        type: 'proof_submitted',
-        taskId: task.id,
-        taskTitle: task.title,
-        message: `Proof of work submitted for "${task.title}". Ready for your review!`,
-        createdAt: new Date(),
-      });
-      const posterIndex = db.users.findIndex(u => u.id === task.postedBy);
-      if (posterIndex !== -1) db.users[posterIndex] = poster;
-    }
-
     // Find and update task in database
     const taskIndex = db.tasks.findIndex(t => t.id === taskId);
     db.tasks[taskIndex] = task;
 
     // Write updated database
     writeDB(db);
+
+    // Notify task poster with rich notification and Socket.io broadcast
+    const solver = db.users.find(u => u.id === userId);
+    createNotification(
+      task.postedBy,
+      'proof_submitted',
+      task.id,
+      `${solver ? solver.username : 'Solver'} submitted proof for: ${task.title}`,
+      userId,
+      {
+        taskTitle: task.title,
+        solverUsername: solver ? solver.username : 'Solver',
+        status: 'under-review',
+      },
+      `/approve-task/${task.id}`
+    );
 
     // Return success
     res.status(200).json({
@@ -362,23 +363,12 @@ const approveTask = async (req, res) => {
     solver.tasksCompleted.push(taskId);
     solver.engineerScore.bugsSolved += 1;
 
-    // Add notification for solver
-    if (!solver.notifications) solver.notifications = [];
-    solver.notifications.push({
-      id: Date.now().toString(),
-      type: 'task_approved',
-      taskId: task.id,
-      taskTitle: task.title,
-      message: `Your solution for "${task.title}" was approved! ₹${task.bounty} added to your wallet. Rating: ${rating} ⭐`,
-      createdAt: new Date(),
-    });
-
     // Update solver's moving average rating
-    const totalRatings = solver.engineerScore.totalRatings;
-    const currentAvg = solver.engineerScore.averageRating;
+    const totalRatings = solver.engineerScore.totalRatings || 0;
+    const currentAvg = solver.engineerScore.averageRating || 0;
     const newAvg = (currentAvg * totalRatings + rating) / (totalRatings + 1);
     solver.engineerScore.averageRating = parseFloat(newAvg.toFixed(2));
-    solver.engineerScore.totalRatings += 1;
+    solver.engineerScore.totalRatings = totalRatings + 1;
 
     // Remove bounty from poster's escrow
     poster.escrowHeld -= task.bounty;
@@ -397,6 +387,22 @@ const approveTask = async (req, res) => {
 
     // Write updated database
     writeDB(db);
+
+    // Notify solver with rich notification and Socket.io broadcast
+    createNotification(
+      task.claimedBy,
+      'task_approved',
+      task.id,
+      `${poster.username} approved your work on: ${task.title}`,
+      poster.id,
+      {
+        taskTitle: task.title,
+        posterUsername: poster.username,
+        rating: rating,
+        earned: task.bounty,
+      },
+      `/task/${task.id}`
+    );
 
     // Return success
     res.status(200).json({
@@ -462,6 +468,34 @@ const checkAndResolveGhosting = async (req, res) => {
           if (posterIndex !== -1) {
             db.users[posterIndex] = poster;
           }
+
+          // Trigger notifications to poster and solver
+          createNotification(
+            task.postedBy,
+            'task_abandoned',
+            task.id,
+            `Task abandoned (48h timeout): ${task.title}. 50/50 split applied.`,
+            task.claimedBy,
+            {
+              taskTitle: task.title,
+              splitAmount: halfBounty,
+              totalBounty: task.bounty,
+            },
+            `/task/${task.id}`
+          );
+          createNotification(
+            task.claimedBy,
+            'task_abandoned',
+            task.id,
+            `Task abandoned (48h timeout): ${task.title}. 50/50 split applied.`,
+            task.postedBy,
+            {
+              taskTitle: task.title,
+              splitAmount: halfBounty,
+              totalBounty: task.bounty,
+            },
+            `/task/${task.id}`
+          );
 
           resolvedTasks++;
         }
@@ -543,6 +577,34 @@ const autoResolveGhosting = async (req, res) => {
           if (posterIndex !== -1) {
             db.users[posterIndex] = poster;
           }
+
+          // Trigger notifications to poster and solver
+          createNotification(
+            task.postedBy,
+            'task_abandoned',
+            task.id,
+            `Task abandoned (48h timeout): ${task.title}. 50/50 split applied.`,
+            task.claimedBy,
+            {
+              taskTitle: task.title,
+              splitAmount: halfBounty,
+              totalBounty: task.bounty,
+            },
+            `/task/${task.id}`
+          );
+          createNotification(
+            task.claimedBy,
+            'task_abandoned',
+            task.id,
+            `Task abandoned (48h timeout): ${task.title}. 50/50 split applied.`,
+            task.postedBy,
+            {
+              taskTitle: task.title,
+              splitAmount: halfBounty,
+              totalBounty: task.bounty,
+            },
+            `/task/${task.id}`
+          );
 
           resolvedCount++;
           resolvedTasksList.push({
@@ -686,24 +748,6 @@ const rejectTask = async (req, res) => {
     task.rejectedAt = new Date();
     task.rejectionCount = (task.rejectionCount || 0) + 1;
 
-    // Find solver user and add notification
-    const solver = db.users.find(u => u.id === task.claimedBy);
-    if (solver) {
-      if (!solver.notifications) {
-        solver.notifications = [];
-      }
-      solver.notifications.push({
-        type: 'task_rejected',
-        taskId: task.id,
-        reason: rejectionReason.trim(),
-        createdAt: new Date(),
-      });
-      const solverIndex = db.users.findIndex(u => u.id === task.claimedBy);
-      if (solverIndex !== -1) {
-        db.users[solverIndex] = solver;
-      }
-    }
-
     // Update task in database
     const taskIndex = db.tasks.findIndex(t => t.id === taskId);
     if (taskIndex !== -1) {
@@ -712,6 +756,22 @@ const rejectTask = async (req, res) => {
 
     // Write updated database
     writeDB(db);
+
+    // Notify solver with rich notification and Socket.io broadcast
+    const poster = db.users.find(u => u.id === userId);
+    createNotification(
+      task.claimedBy,
+      'task_rejected',
+      task.id,
+      `${poster ? poster.username : 'Poster'} rejected your proof on: ${task.title}`,
+      userId,
+      {
+        taskTitle: task.title,
+        posterUsername: poster ? poster.username : 'Poster',
+        reason: rejectionReason.trim(),
+      },
+      `/submit-proof/${task.id}`
+    );
 
     // Return success
     res.status(200).json({
@@ -726,4 +786,87 @@ const rejectTask = async (req, res) => {
   }
 };
 
-module.exports = { postTask, getOpenTasks, getTaskById, claimTask, submitProof, approveTask, checkAndResolveGhosting, autoResolveGhosting, deleteTask, rejectTask };
+// Search, filter, and sort tasks
+const searchTasks = async (req, res) => {
+  try {
+    const { search, minBounty, maxBounty, deadline, status, sort, type, userId } = req.query;
+    const db = readDB();
+    const users = db.users || [];
+    let tasks = (db.tasks || []).map(task => enrichTask(task, users));
+
+    // Keyword search (title and description)
+    if (search && search.trim()) {
+      const q = search.trim().toLowerCase();
+      tasks = tasks.filter(t => 
+        (t.title && t.title.toLowerCase().includes(q)) || 
+        (t.description && t.description.toLowerCase().includes(q))
+      );
+    }
+
+    // Bounty range
+    if (minBounty && !isNaN(Number(minBounty))) {
+      tasks = tasks.filter(t => Number(t.bounty) >= Number(minBounty));
+    }
+    if (maxBounty && !isNaN(Number(maxBounty))) {
+      tasks = tasks.filter(t => Number(t.bounty) <= Number(maxBounty));
+    }
+
+    // Deadline hours
+    if (deadline && !isNaN(Number(deadline))) {
+      tasks = tasks.filter(t => Number(t.deadlineHours || 2) <= Number(deadline));
+    }
+
+    // Status filter
+    if (status && status !== 'all') {
+      const statuses = status.split(',').map(s => s.trim().toLowerCase());
+      tasks = tasks.filter(t => statuses.includes(t.status.toLowerCase()));
+    }
+
+    // Type filter (posted / claimed / all)
+    if (type && userId) {
+      if (type === 'posted') {
+        tasks = tasks.filter(t => String(t.postedBy) === String(userId));
+      } else if (type === 'claimed') {
+        tasks = tasks.filter(t => String(t.claimedBy) === String(userId));
+      }
+    }
+
+    // Sorting
+    if (sort === 'oldest') {
+      tasks.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+    } else if (sort === 'highest-bounty' || sort === 'highest') {
+      tasks.sort((a, b) => Number(b.bounty) - Number(a.bounty));
+    } else if (sort === 'lowest-bounty' || sort === 'lowest') {
+      tasks.sort((a, b) => Number(a.bounty) - Number(b.bounty));
+    } else if (sort === 'most-time') {
+      tasks.sort((a, b) => (Number(b.deadlineHours) || 0) - (Number(a.deadlineHours) || 0));
+    } else if (sort === 'least-time') {
+      tasks.sort((a, b) => (Number(a.deadlineHours) || 0) - (Number(b.deadlineHours) || 0));
+    } else {
+      // Default: newest first
+      tasks.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    }
+
+    res.status(200).json({
+      success: true,
+      count: tasks.length,
+      tasks,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+module.exports = {
+  postTask,
+  getOpenTasks,
+  getTaskById,
+  claimTask,
+  submitProof,
+  approveTask,
+  checkAndResolveGhosting,
+  autoResolveGhosting,
+  deleteTask,
+  rejectTask,
+  searchTasks,
+};
