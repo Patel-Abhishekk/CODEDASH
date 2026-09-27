@@ -1,0 +1,104 @@
+/* Navbar container */
+.navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 30px;
+  background: white;
+  border-bottom: 1px solid #E5E7EB;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  font-family: 'Inter', 'Poppins', sans-serif;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+/* Left side of navbar */
+.navbar-left {
+  display: flex;
+  align-items: center;
+}
+
+/* CodeDash Logo */
+.navbar-logo {
+  font-size: 22px;
+  font-weight: 700;
+  color: #2563EB;
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
+
+.navbar-logo:hover {
+  color: #1D4ED8;
+}
+
+/* Right side of navbar */
+.navbar-right {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+/* Username greeting */
+.user-profile-nav-link {
+  text-decoration: none;
+  transition: opacity 0.2s ease;
+}
+
+.user-profile-nav-link:hover .user-name {
+  color: #2563EB;
+  text-decoration: underline;
+}
+
+.user-name {
+  font-size: 14px;
+  color: #6B7280;
+  font-weight: 500;
+}
+
+/* Logout button */
+.btn-logout {
+  background: #EF4444;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-logout:hover {
+  background: #DC2626;
+  transform: translateY(-2px);
+  box-shadow: 0 3px 10px rgba(239, 68, 68, 0.2);
+}
+
+.btn-logout:active {
+  transform: translateY(0);
+}
+
+/* Responsive - Stack on mobile */
+@media (max-width: 768px) {
+  .navbar {
+    padding: 12px 20px;
+  }
+
+  .navbar-logo {
+    font-size: 18px;
+  }
+
+  .user-name {
+    display: none;
+  }
+
+  .navbar-right {
+    gap: 10px;
+  }
+
+  .btn-logout {
+    padding: 8px 16px;
+    font-size: 12px;
+  }
+}

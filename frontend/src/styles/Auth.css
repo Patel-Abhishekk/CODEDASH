@@ -1,0 +1,149 @@
+/* Auth Container - Centers the login/register card */
+.auth-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  font-family: 'Inter', 'Poppins', sans-serif;
+}
+
+/* Auth Card - The white box with login/register form */
+.auth-card {
+  background: white;
+  padding: 40px;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 400px;
+}
+
+/* CodeDash Logo */
+.logo {
+  font-size: 28px;
+  font-weight: 700;
+  color: #2563EB;
+  margin: 0 0 10px 0;
+  text-align: center;
+}
+
+/* Page heading (Login / Create Account) */
+.auth-card h2 {
+  font-size: 22px;
+  color: #1F2937;
+  margin-bottom: 30px;
+  text-align: center;
+  font-weight: 600;
+}
+
+/* Form group (label + input) */
+.form-group {
+  margin-bottom: 20px;
+}
+
+/* Labels */
+.form-group label {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 8px;
+}
+
+/* Input fields */
+.form-group input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #E5E7EB;
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: 'Inter', sans-serif;
+  transition: all 0.3s ease;
+  box-sizing: border-box;
+}
+
+/* Input focus state */
+.form-group input:focus {
+  outline: none;
+  border-color: #2563EB;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+/* Primary button (Login / Register) */
+.btn-primary {
+  width: 100%;
+  padding: 12px;
+  background: #2563EB;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-top: 10px;
+}
+
+/* Button hover state */
+.btn-primary:hover {
+  background: #1D4ED8;
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(37, 99, 235, 0.3);
+}
+
+/* Button disabled state (while loading) */
+.btn-primary:disabled {
+  background: #9CA3AF;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Error message */
+.error-message {
+  background: #FEE2E2;
+  border: 1px solid #FCA5A5;
+  color: #DC2626;
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+/* Auth link - "Don't have account? Register here" */
+.auth-link {
+  text-align: center;
+  font-size: 14px;
+  color: #6B7280;
+  margin-top: 20px;
+}
+
+/* Links inside auth-link */
+.auth-link a {
+  color: #2563EB;
+  text-decoration: none;
+  font-weight: 600;
+  transition: color 0.3s ease;
+}
+
+/* Link hover */
+.auth-link a:hover {
+  color: #1D4ED8;
+  text-decoration: underline;
+}
+
+/* Responsive - Mobile devices */
+@media (max-width: 480px) {
+  .auth-card {
+    padding: 30px 20px;
+    margin: 20px;
+  }
+
+  .logo {
+    font-size: 24px;
+  }
+
+  .auth-card h2 {
+    font-size: 18px;
+  }
+}

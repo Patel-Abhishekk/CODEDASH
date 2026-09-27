@@ -1,0 +1,137 @@
+.messages-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: #F9FAFB;
+  font-family: 'Inter', 'Poppins', sans-serif;
+}
+
+.messages-container {
+  display: flex;
+  flex: 1;
+  max-width: 1280px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.messages-content {
+  flex: 1;
+  padding: 32px;
+}
+
+.messages-header {
+  margin-bottom: 24px;
+}
+
+.messages-header h1 {
+  font-size: 24px;
+  font-weight: 700;
+  color: #1F2937;
+  margin: 0 0 6px 0;
+}
+
+.messages-subtitle {
+  font-size: 14px;
+  color: #6B7280;
+  margin: 0;
+}
+
+.chats-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.chat-card-item {
+  background: white;
+  border: 1px solid #E5E7EB;
+  border-radius: 12px;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.chat-card-item:hover {
+  border-color: #2563EB;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.08);
+  transform: translateY(-2px);
+}
+
+.chat-card-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #2563EB;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.chat-card-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow: hidden;
+}
+
+.chat-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.chat-partner-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1F2937;
+}
+
+.chat-time {
+  font-size: 12px;
+  color: #9CA3AF;
+  white-space: nowrap;
+}
+
+.chat-task-sub {
+  font-size: 13px;
+  color: #2563EB;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chat-last-msg {
+  font-size: 14px;
+  color: #6B7280;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.unread-badge {
+  background: #2563EB;
+  color: white;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.empty-chats {
+  background: white;
+  border: 1px solid #E5E7EB;
+  border-radius: 12px;
+  padding: 60px 20px;
+  text-align: center;
+  color: #6B7280;
+}

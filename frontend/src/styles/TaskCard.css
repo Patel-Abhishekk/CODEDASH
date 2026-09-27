@@ -1,0 +1,227 @@
+/* Task card container */
+.task-card {
+  background: white;
+  border: 1px solid #E5E7EB;
+  border-radius: 12px;
+  padding: 20px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-family: 'Inter', 'Poppins', sans-serif;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Task card hover effect */
+.task-card:hover {
+  border-color: #2563EB;
+  box-shadow: 0 10px 25px rgba(37, 99, 235, 0.15);
+  transform: translateY(-4px);
+}
+
+/* Task header (title + status) */
+.task-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+/* Task title */
+.task-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1F2937;
+  margin: 0;
+  flex: 1;
+}
+
+/* Status badge */
+.task-status {
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+
+/* Status badge colors */
+.task-status.open {
+  background: #D1FAE5;
+  color: #047857;
+}
+
+.task-status.claimed {
+  background: #FEF3C7;
+  color: #B45309;
+}
+
+.task-status.under-review {
+  background: #DBEAFE;
+  color: #0369A1;
+}
+
+.task-status.approved {
+  background: #D1FAE5;
+  color: #047857;
+}
+
+.task-status.rejected {
+  background: #FEE2E2;
+  color: #DC2626;
+}
+
+.task-status.abandoned {
+  background: #F3F4F6;
+  color: #6B7280;
+}
+
+/* Task description */
+.task-description {
+  font-size: 14px;
+  color: #6B7280;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* Task meta information */
+.task-meta {
+  display: flex;
+  gap: 16px;
+  padding: 12px 0;
+  border-top: 1px solid #F3F4F6;
+  border-bottom: 1px solid #F3F4F6;
+}
+
+/* Individual meta item */
+.meta-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.meta-label {
+  font-size: 12px;
+  color: #9CA3AF;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.meta-value {
+  font-size: 16px;
+  color: #1F2937;
+  font-weight: 700;
+}
+
+/* Claim button */
+.btn-claim {
+  background: #2563EB;
+  color: white;
+  border: none;
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  width: 100%;
+}
+
+.btn-claim:hover {
+  background: #1D4ED8;
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(37, 99, 235, 0.3);
+}
+
+.btn-claim:disabled {
+  background: #9CA3AF;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Claimed by me message */
+.task-claimed-by-me {
+  background: #D1FAE5;
+  color: #047857;
+  padding: 12px;
+  border-radius: 8px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* Posted by me message */
+.task-posted-by-me {
+  background: #FEF3C7;
+  color: #B45309;
+  padding: 12px;
+  border-radius: 8px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* Poster info container */
+.task-poster {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #6B7280;
+  margin-top: 4px;
+}
+
+.poster-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #2563EB;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.poster-name {
+  color: #2563EB;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  transition: text-decoration 0.2s ease;
+}
+
+.poster-name:hover {
+  text-decoration: underline;
+}
+
+/* Responsive - Adjust on mobile */
+@media (max-width: 768px) {
+  .task-card {
+    gap: 12px;
+    padding: 16px;
+  }
+
+  .task-title {
+    font-size: 16px;
+  }
+
+  .task-description {
+    font-size: 13px;
+  }
+
+  .task-meta {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .meta-item {
+    flex-direction: row;
+    justify-content: space-between;
+  }
+}

@@ -1,0 +1,36 @@
+/* Task feed container */
+.task-feed {
+  width: 100%;
+}
+
+/* Grid layout for tasks */
+.tasks-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 20px;
+  width: 100%;
+}
+
+/* Empty state message */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: #9CA3AF;
+  font-size: 16px;
+  grid-column: 1 / -1;
+}
+
+/* Responsive - Adjust grid for smaller screens */
+@media (max-width: 1200px) {
+  .tasks-grid {
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 18px;
+  }
+}
+
+@media (max-width: 768px) {
+  .tasks-grid {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+}

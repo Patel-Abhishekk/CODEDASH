@@ -1,0 +1,491 @@
+/* Full page container */
+.task-history-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background-color: #F9FAFB;
+  font-family: 'Inter', 'Poppins', sans-serif;
+  color: #1F2937;
+}
+
+/* Main 3-column layout container */
+.task-history-container {
+  display: grid;
+  grid-template-columns: 260px 1fr 280px;
+  gap: 24px;
+  padding: 30px;
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+  flex: 1;
+}
+
+/* LEFT SECTION - Filters Panel */
+.history-filters {
+  background: #FFFFFF;
+  padding: 24px;
+  border-radius: 12px;
+  border: 1px solid #E5E7EB;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  height: fit-content;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.filter-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #6B7280;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+/* Clickable filter buttons (Type Filter) */
+.filter-buttons-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.filter-button {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #4B5563;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.filter-button:hover {
+  background: #F3F4F6;
+  color: #1F2937;
+}
+
+.filter-button.active {
+  background: #EFF6FF;
+  color: #2563EB;
+  border-color: #BFDBFE;
+  font-weight: 600;
+}
+
+/* Status filter tabs */
+.status-tabs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.status-tab {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #6B7280;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.status-tab:hover {
+  background: #F3F4F6;
+  color: #1F2937;
+}
+
+.status-tab.active {
+  background: #2563EB;
+  color: #FFFFFF;
+  font-weight: 600;
+}
+
+/* Sort dropdown */
+.sort-select {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #E5E7EB;
+  background-color: #FFFFFF;
+  color: #1F2937;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.sort-select:focus {
+  border-color: #2563EB;
+}
+
+/* CENTER SECTION - Task List */
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.history-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #E5E7EB;
+}
+
+.history-list-header h2 {
+  font-size: 22px;
+  font-weight: 700;
+  color: #1F2937;
+  margin: 0;
+}
+
+.results-count {
+  font-size: 13px;
+  color: #6B7280;
+  font-weight: 500;
+}
+
+.cards-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Individual Task History Card */
+.task-history-card {
+  background: #FFFFFF;
+  border: 1px solid #E5E7EB;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.task-history-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  border-color: #2563EB;
+}
+
+.card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.card-title {
+  font-size: 17px;
+  font-weight: 600;
+  color: #1F2937;
+  margin: 0;
+  line-height: 1.3;
+}
+
+.card-bounty {
+  font-size: 16px;
+  font-weight: 700;
+  color: #10B981;
+  background: #ECFDF5;
+  padding: 4px 10px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+.card-description {
+  font-size: 14px;
+  color: #4B5563;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.card-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 10px;
+  border-top: 1px solid #F3F4F6;
+  margin-top: 4px;
+}
+
+.card-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.status-badge {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 12px;
+  text-transform: capitalize;
+}
+
+.status-badge.open {
+  background: #DBEAFE;
+  color: #1D4ED8;
+}
+
+.status-badge.claimed {
+  background: #FEF3C7;
+  color: #D97706;
+}
+
+.status-badge.under-review {
+  background: #E0E7FF;
+  color: #4338CA;
+}
+
+.status-badge.approved, .status-badge.completed {
+  background: #D1FAE5;
+  color: #047857;
+}
+
+.status-badge.rejected {
+  background: #FEE2E2;
+  color: #DC2626;
+}
+
+.status-badge.abandoned {
+  background: #F3F4F6;
+  color: #6B7280;
+}
+
+.card-date {
+  font-size: 12px;
+  color: #9CA3AF;
+}
+
+.role-posted {
+  font-size: 12px;
+  font-weight: 500;
+  color: #2563EB;
+  background: #EFF6FF;
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
+.role-claimed {
+  font-size: 12px;
+  font-weight: 500;
+  color: #D97706;
+  background: #FFFBEB;
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
+/* Pagination controls */
+.history-pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+  padding-top: 16px;
+}
+
+.page-btn {
+  background: #FFFFFF;
+  border: 1px solid #E5E7EB;
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.page-btn:hover:not(:disabled) {
+  background: #F9FAFB;
+  border-color: #D1D5DB;
+}
+
+.page-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.page-numbers {
+  display: flex;
+  gap: 6px;
+}
+
+.page-num {
+  background: #FFFFFF;
+  border: 1px solid #E5E7EB;
+  border-radius: 6px;
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.page-num:hover {
+  border-color: #2563EB;
+  color: #2563EB;
+}
+
+.page-num.active {
+  background: #2563EB;
+  border-color: #2563EB;
+  color: #FFFFFF;
+  font-weight: 600;
+}
+
+/* Empty state */
+.empty-state {
+  background: #FFFFFF;
+  border: 1px dashed #D1D5DB;
+  border-radius: 12px;
+  padding: 60px 20px;
+  text-align: center;
+  color: #6B7280;
+  font-size: 15px;
+}
+
+/* Loading state */
+.loading {
+  text-align: center;
+  padding: 60px 20px;
+  color: #6B7280;
+  font-size: 15px;
+}
+
+/* RIGHT SIDEBAR - Stats Summary */
+.history-stats {
+  height: fit-content;
+  position: sticky;
+  top: 30px;
+}
+
+.stats-card {
+  background: #FFFFFF;
+  border: 1px solid #E5E7EB;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.stats-card-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1F2937;
+  letter-spacing: 0.05em;
+  margin: 0 0 20px 0;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #E5E7EB;
+}
+
+.stats-stat-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.stats-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.stats-label {
+  font-size: 13px;
+  color: #6B7280;
+  font-weight: 500;
+}
+
+.stats-value {
+  font-size: 15px;
+  font-weight: 700;
+  color: #1F2937;
+}
+
+.stats-value.highlight-green {
+  color: #10B981;
+}
+
+.stats-value.highlight-blue {
+  color: #2563EB;
+}
+
+/* RESPONSIVE DESIGN */
+
+/* Tablet (768px - 1023px) */
+@media (max-width: 1023px) {
+  .task-history-container {
+    grid-template-columns: 240px 1fr;
+  }
+
+  .history-stats {
+    grid-column: 1 / -1;
+    position: static;
+  }
+
+  .stats-stat-list {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+}
+
+/* Mobile (< 768px) */
+@media (max-width: 767px) {
+  .task-history-container {
+    grid-template-columns: 1fr;
+    padding: 16px;
+    gap: 16px;
+  }
+
+  .history-stats {
+    order: -1; /* Show stats summary bar at top on mobile */
+  }
+
+  .stats-stat-list {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .history-filters {
+    gap: 16px;
+    padding: 16px;
+  }
+
+  .filter-buttons-list,
+  .status-tabs-list {
+    flex-direction: row;
+    overflow-x: auto;
+    padding-bottom: 6px;
+    white-space: nowrap;
+  }
+
+  .filter-button,
+  .status-tab {
+    flex-shrink: 0;
+  }
+}

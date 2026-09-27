@@ -1,0 +1,376 @@
+/* Main dashboard container */
+.dashboard {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: #F9FAFB;
+  font-family: 'Inter', 'Poppins', sans-serif;
+}
+
+/* Dashboard content wrapper (below navbar) */
+.dashboard-content {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  gap: 0;
+}
+
+/* Sidebar */
+.sidebar {
+  width: 250px;
+  flex-shrink: 0;
+}
+
+/* Main content area (center) */
+.main-content {
+  flex: 1;
+  padding: 30px;
+  overflow-y: auto;
+  background: #FFFFFF;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Content header (title + post button) */
+.content-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #E5E7EB;
+  flex-shrink: 0;
+}
+
+.content-header h1 {
+  font-size: 28px;
+  color: #1F2937;
+  margin: 0;
+  font-weight: 700;
+}
+
+/* Post Task button */
+.btn-post-task {
+  background: #2563EB;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+}
+
+.btn-post-task:hover {
+  background: #1D4ED8;
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(37, 99, 235, 0.3);
+}
+
+/* Loading state */
+.loading {
+  text-align: center;
+  padding: 50px 20px;
+  color: #6B7280;
+  font-size: 16px;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Empty state */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: #9CA3AF;
+  font-size: 16px;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+}
+
+/* Right sidebar */
+.right-sidebar {
+  width: 280px;
+  padding: 30px 20px;
+  background: #F9FAFB;
+  border-left: 1px solid #E5E7EB;
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+
+/* User card in right sidebar */
+.user-card {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  position: sticky;
+  top: 0;
+}
+
+.user-card h3 {
+  font-size: 16px;
+  color: #1F2937;
+  margin: 0 0 20px 0;
+  font-weight: 600;
+}
+
+/* Score stat item */
+.score-stat {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid #F3F4F6;
+}
+
+.score-stat:last-child {
+  border-bottom: none;
+}
+
+.score-stat .label {
+  font-size: 13px;
+  color: #6B7280;
+  font-weight: 500;
+}
+
+.score-stat .value {
+  font-size: 16px;
+  color: #1F2937;
+  font-weight: 700;
+}
+
+/* Responsive - Hide right sidebar on smaller screens */
+@media (max-width: 1200px) {
+  .right-sidebar {
+    width: 240px;
+  }
+}
+
+/* Check Abandoned Tasks button */
+.btn-check-ghosting {
+  width: 100%;
+  margin-top: 16px;
+  background: #DBEAFE;
+  color: #0369A1;
+  padding: 12px;
+  border: 1px solid #BFDBFE;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btn-check-ghosting:hover {
+  background: #BFDBFE;
+  color: #1E40AF;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(3, 105, 161, 0.15);
+}
+
+.btn-check-ghosting:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Ghosting Modal Styles */
+.ghosting-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.ghosting-modal {
+  background: white;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 600px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  max-height: 90vh;
+}
+
+.ghosting-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid #E5E7EB;
+  background: #F9FAFB;
+}
+
+.ghosting-modal-header h2 {
+  font-size: 18px;
+  color: #1F2937;
+  margin: 0;
+  font-weight: 700;
+}
+
+.ghosting-modal-close-icon {
+  background: transparent;
+  border: none;
+  font-size: 24px;
+  color: #6B7280;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+
+.ghosting-modal-close-icon:hover {
+  color: #1F2937;
+}
+
+.ghosting-modal-body {
+  padding: 24px;
+  overflow-y: auto;
+}
+
+.ghosting-modal-message {
+  font-size: 15px;
+  color: #374151;
+  margin: 0 0 20px 0;
+  line-height: 1.5;
+}
+
+.ghosting-table-container {
+  overflow-x: auto;
+  margin-bottom: 20px;
+  border: 1px solid #E5E7EB;
+  border-radius: 8px;
+}
+
+.ghosting-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 14px;
+}
+
+.ghosting-table th {
+  background: #F9FAFB;
+  padding: 12px 16px;
+  font-weight: 600;
+  color: #4B5563;
+  border-bottom: 1px solid #E5E7EB;
+  white-space: nowrap;
+}
+
+.ghosting-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid #F3F4F6;
+  color: #1F2937;
+}
+
+.ghosting-table tr:last-child td {
+  border-bottom: none;
+}
+
+.ghosting-table .task-title-cell {
+  font-weight: 600;
+}
+
+.ghosting-info-box {
+  background: #EFF6FF;
+  border-left: 4px solid #2563EB;
+  padding: 12px 16px;
+  border-radius: 6px;
+  margin-top: 16px;
+}
+
+.ghosting-info-box p {
+  font-size: 13px;
+  color: #1E40AF;
+  margin: 0;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.ghosting-modal-footer {
+  padding: 16px 24px;
+  border-top: 1px solid #E5E7EB;
+  background: #F9FAFB;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.btn-ghosting-close {
+  background: #2563EB;
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-ghosting-close:hover {
+  background: #1D4ED8;
+}
+
+@media (max-width: 768px) {
+  .dashboard-content {
+    flex-direction: column;
+    overflow-y: auto;
+  }
+
+  .sidebar {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid #E5E7EB;
+    max-height: 120px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 0 20px;
+  }
+
+  .right-sidebar {
+    display: block;
+    width: 100%;
+    border-left: none;
+    border-top: 1px solid #E5E7EB;
+    padding: 20px;
+  }
+
+  .main-content {
+    padding: 20px;
+  }
+
+  .content-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+  }
+
+  .btn-post-task {
+    width: 100%;
+  }
+
+  .ghosting-modal {
+    max-width: 100%;
+    margin: 10px;
+  }
+}
