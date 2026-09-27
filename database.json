@@ -78,21 +78,44 @@
       "username": "abhishek",
       "email": "1234@gmail.com",
       "passwordHash": "$2b$10$kfsDaxj.DxOdgDDVnUqDnuh681xpLVkyN00VEff6sjnM00TTngd/C",
-      "walletBalance": 0,
+      "walletBalance": 1000,
       "escrowHeld": 100,
       "engineerScore": {
-        "averageRating": 0,
-        "totalRatings": 0,
-        "bugsSolved": 0
+        "averageRating": 3,
+        "totalRatings": 1,
+        "bugsSolved": 1
       },
       "tasksPosted": [
         "1779389607434",
         "1786817943233",
         "1787996318072"
       ],
-      "tasksClaimed": [],
-      "tasksCompleted": [],
-      "createdAt": "2026-05-21T13:42:04.838Z"
+      "tasksClaimed": [
+        "1790535838530"
+      ],
+      "tasksCompleted": [
+        "1790535838530"
+      ],
+      "createdAt": "2026-05-21T13:42:04.838Z",
+      "notifications": [
+        {
+          "id": "1790536026410v6je",
+          "userId": "1779370924838",
+          "type": "task_approved",
+          "message": "abhi approved your work on: create a website for managing attendance far a small local school",
+          "taskId": "1790535838530",
+          "relatedUserId": "1786817245549",
+          "actionUrl": "/task/1790535838530",
+          "metadata": {
+            "taskTitle": "create a website for managing attendance far a small local school",
+            "posterUsername": "abhi",
+            "rating": 3,
+            "earned": 1000
+          },
+          "read": false,
+          "createdAt": "2026-09-27T19:07:06.410Z"
+        }
+      ]
     },
     {
       "id": "1779392235829",
@@ -120,14 +143,16 @@
       "username": "abhi",
       "email": "abhi@123.com",
       "passwordHash": "$2b$10$QJUuRUcXefCyWZxkdaRHRelFxUJyhFKHXHE9Fhbi4eDaMrVVDMSoK",
-      "walletBalance": 1800,
+      "walletBalance": 800,
       "escrowHeld": 0,
       "engineerScore": {
         "averageRating": 5,
         "totalRatings": 1,
         "bugsSolved": 1
       },
-      "tasksPosted": [],
+      "tasksPosted": [
+        "1790535838530"
+      ],
       "tasksClaimed": [
         "1786817943233",
         "1787996318072"
@@ -135,7 +160,42 @@
       "tasksCompleted": [
         "1786817943233"
       ],
-      "createdAt": "2026-08-15T18:07:25.549Z"
+      "createdAt": "2026-08-15T18:07:25.549Z",
+      "notifications": [
+        {
+          "id": "1790535879130klgy",
+          "userId": "1786817245549",
+          "type": "task_claimed",
+          "message": "abhishek claimed your task: create a website for managing attendance far a small local school",
+          "taskId": "1790535838530",
+          "relatedUserId": "1779370924838",
+          "actionUrl": "/task/1790535838530",
+          "metadata": {
+            "taskTitle": "create a website for managing attendance far a small local school",
+            "solverUsername": "abhishek",
+            "bounty": 1000,
+            "deadlineHours": 48
+          },
+          "read": false,
+          "createdAt": "2026-09-27T19:04:39.130Z"
+        },
+        {
+          "id": "1790535962039kccu",
+          "userId": "1786817245549",
+          "type": "proof_submitted",
+          "message": "abhishek submitted proof for: create a website for managing attendance far a small local school",
+          "taskId": "1790535838530",
+          "relatedUserId": "1779370924838",
+          "actionUrl": "/approve-task/1790535838530",
+          "metadata": {
+            "taskTitle": "create a website for managing attendance far a small local school",
+            "solverUsername": "abhishek",
+            "status": "under-review"
+          },
+          "read": false,
+          "createdAt": "2026-09-27T19:06:02.039Z"
+        }
+      ]
     }
   ],
   "tasks": [
@@ -261,6 +321,26 @@
       "escrowResolvedAt": null,
       "escrowSplitRatio": null,
       "createdAt": "2026-08-29T09:38:38.072Z"
+    },
+    {
+      "id": "1790535838530",
+      "title": "create a website for managing attendance far a small local school",
+      "description": "create a website for attendance management\nfor a small local scchool named vandana school\ncreate a ec for teachers to login in lec and mark attendance of student",
+      "bounty": 1000,
+      "postedBy": "1786817245549",
+      "status": "approved",
+      "claimedBy": "1779370924838",
+      "claimedAt": "2026-09-27T19:04:39.126Z",
+      "claimDeadline": "2026-09-29T19:04:39.126Z",
+      "deadlineHours": 48,
+      "proofOfWork": "srcvlik,umdgfxcvjhgfgfxgghggb./,m /, /,vgn/vkl\nbgnv;kgd;vknd;bkehb\ngkvge.dkgjve;kjb;\ngkn.kdj",
+      "submittedAt": "2026-09-27T19:06:02.036Z",
+      "approvedAt": "2026-09-27T19:07:06.375Z",
+      "rating": 3,
+      "escrowResolved": true,
+      "escrowResolvedAt": "2026-09-27T19:07:06.375Z",
+      "escrowSplitRatio": null,
+      "createdAt": "2026-09-27T19:03:58.530Z"
     }
   ],
   "chats": [
@@ -315,5 +395,113 @@
       "createdAt": "2026-08-30T15:49:45.638Z"
     }
   ],
-  "notifications": []
+  "notifications": [
+    {
+      "id": "1790535879130klgy",
+      "userId": "1786817245549",
+      "type": "task_claimed",
+      "message": "abhishek claimed your task: create a website for managing attendance far a small local school",
+      "taskId": "1790535838530",
+      "relatedUserId": "1779370924838",
+      "actionUrl": "/task/1790535838530",
+      "metadata": {
+        "taskTitle": "create a website for managing attendance far a small local school",
+        "solverUsername": "abhishek",
+        "bounty": 1000,
+        "deadlineHours": 48
+      },
+      "read": false,
+      "createdAt": "2026-09-27T19:04:39.130Z"
+    },
+    {
+      "id": "1790535962039kccu",
+      "userId": "1786817245549",
+      "type": "proof_submitted",
+      "message": "abhishek submitted proof for: create a website for managing attendance far a small local school",
+      "taskId": "1790535838530",
+      "relatedUserId": "1779370924838",
+      "actionUrl": "/approve-task/1790535838530",
+      "metadata": {
+        "taskTitle": "create a website for managing attendance far a small local school",
+        "solverUsername": "abhishek",
+        "status": "under-review"
+      },
+      "read": false,
+      "createdAt": "2026-09-27T19:06:02.039Z"
+    },
+    {
+      "id": "1790536026410v6je",
+      "userId": "1779370924838",
+      "type": "task_approved",
+      "message": "abhi approved your work on: create a website for managing attendance far a small local school",
+      "taskId": "1790535838530",
+      "relatedUserId": "1786817245549",
+      "actionUrl": "/task/1790535838530",
+      "metadata": {
+        "taskTitle": "create a website for managing attendance far a small local school",
+        "posterUsername": "abhi",
+        "rating": 3,
+        "earned": 1000
+      },
+      "read": false,
+      "createdAt": "2026-09-27T19:07:06.410Z"
+    }
+  ],
+  "usersByEmail": {
+    "test@example.com": "1779263260287",
+    "solver1@example.com": "1779270135304",
+    "poster2@example.com": "1779272681558",
+    "1234@gmail.com": "1779370924838",
+    "solver@gmail.com": "1779392235829",
+    "abhi@123.com": "1786817245549"
+  },
+  "tasksByStatus": {
+    "approved": [
+      "1779270014644",
+      "1779272773980",
+      "1779389607434",
+      "1786817943233",
+      "1790535838530"
+    ],
+    "abandoned": [
+      "1779273040840"
+    ],
+    "claimed": [
+      "1787996318072"
+    ]
+  },
+  "tasksByPoster": {
+    "1779263260287": [
+      "1779270014644"
+    ],
+    "1779272681558": [
+      "1779272773980",
+      "1779273040840"
+    ],
+    "1779370924838": [
+      "1779389607434",
+      "1786817943233",
+      "1787996318072"
+    ],
+    "1786817245549": [
+      "1790535838530"
+    ]
+  },
+  "tasksBySolver": {
+    "1779270135304": [
+      "1779270014644",
+      "1779272773980",
+      "1779273040840"
+    ],
+    "1779392235829": [
+      "1779389607434"
+    ],
+    "1786817245549": [
+      "1786817943233",
+      "1787996318072"
+    ],
+    "1779370924838": [
+      "1790535838530"
+    ]
+  }
 }

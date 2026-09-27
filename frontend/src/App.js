@@ -17,6 +17,7 @@ import UserProfile from './pages/UserProfile';
 import TaskHistory from './pages/TaskHistory';
 import Messages from './pages/Messages';
 import './App.css';
+import ErrorBoundary from './components/ErrorBoundary';
 
 function GlobalToasts() {
   const { toasts, dismissToast } = useNotifications();
@@ -62,15 +63,18 @@ function AppRoutes() {
   );
 }
 
+
 function App() {
   return (
-    <AuthProvider>
-      <NotificationProvider>
-        <ChatProvider>
-          <AppRoutes />
-        </ChatProvider>
-      </NotificationProvider>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <NotificationProvider>
+          <ChatProvider>
+            <AppRoutes />
+          </ChatProvider>
+        </NotificationProvider>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }
 

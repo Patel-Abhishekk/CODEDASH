@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useContext } from 'react';
 import { ChatContext } from '../context/ChatContext';
 import { AuthContext } from '../context/AuthContext';
+import { sanitizeInput } from '../utils/validation';
 import '../styles/ChatModal.css';
 
 export default function ChatModal() {
@@ -39,8 +40,19 @@ export default function ChatModal() {
 
   const handleSend = (e) => {
     e.preventDefault();
-    if (!text.trim()) return;
-    sendMessage(text);
+    if (!text || text.trim().length === 0) {
+      // setError('Message cannot be empty'); // We don't have error state here, just return
+      return;
+    }
+    
+    if (text.length > 500) {
+      return;
+    }
+    
+    // Sanitize
+    const sanitizedMessage = sanitizeInput(text);
+    
+    sendMessage(sanitizedMessage);
     setText('');
     handleTyping(0);
   };

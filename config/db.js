@@ -13,6 +13,33 @@ const readDB = () => {
     if (!db.tasks) db.tasks = [];
     if (!db.chats) db.chats = [];
     if (!db.notifications) db.notifications = [];
+    
+    // Create manual indexes
+    db.usersByEmail = {};
+    db.users.forEach(user => {
+      db.usersByEmail[user.email] = user.id;
+    });
+    
+    db.tasksByStatus = {};
+    db.tasksByPoster = {};
+    db.tasksBySolver = {};
+    
+    db.tasks.forEach(task => {
+      // Status index
+      if (!db.tasksByStatus[task.status]) db.tasksByStatus[task.status] = [];
+      db.tasksByStatus[task.status].push(task.id);
+      
+      // Poster index
+      if (!db.tasksByPoster[task.postedBy]) db.tasksByPoster[task.postedBy] = [];
+      db.tasksByPoster[task.postedBy].push(task.id);
+      
+      // Solver index
+      if (task.claimedBy) {
+        if (!db.tasksBySolver[task.claimedBy]) db.tasksBySolver[task.claimedBy] = [];
+        db.tasksBySolver[task.claimedBy].push(task.id);
+      }
+    });
+
     return db;
   } catch (error) {
     console.error('Error reading database:', error);

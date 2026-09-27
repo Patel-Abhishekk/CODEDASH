@@ -4,6 +4,8 @@ import { AuthContext } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationContext';
 import { taskAPI } from '../utils/api';
 import Navbar from '../components/Navbar';
+import { validateTaskTitle, validateBounty, validateDeadlineHours, sanitizeInput } from '../utils/validation';
+import ValidationError from '../components/ValidationError';
 import '../styles/PostTask.css';
 
 export default function PostTask() {
@@ -24,36 +26,35 @@ export default function PostTask() {
     setError('');
 
     // Validate fields
-    if (!title || !description || !bounty) {
-      setError('All fields are required');
+    if (!validateTaskTitle(title)) {
+      setError('Title: 5-100 chars, valid characters only');
       return;
     }
 
-    if (title.length < 5) {
-      setError('Title must be at least 5 characters');
-      return;
-    }
-
-    if (description.length < 20) {
+    if (!description || description.length < 20) {
       setError('Description must be at least 20 characters');
       return;
     }
 
-    if (bounty < 100) {
-      setError('Minimum bounty is ₹100');
+    if (!validateBounty(bounty)) {
+      setError('Bounty must be ₹100 to ₹100,000');
       return;
     }
-
-    if (bounty > 100000) {
-      setError('Maximum bounty is ₹100,000');
+    
+    if (!validateDeadlineHours(deadlineHours)) {
+      setError('Deadline must be 1-48 hours');
       return;
     }
 
     setLoading(true);
 
     try {
-  // Call backend API to post task
-  await taskAPI.postTask(title, description, parseInt(bounty), user.id, parseInt(deadlineHours));
+      // Sanitize inputs
+      const sanitizedTitle = sanitizeInput(title);
+      const sanitizedDescription = sanitizeInput(description);
+      
+      // Call backend API to post task
+      await taskAPI.postTask(sanitizedTitle, sanitizedDescription, parseInt(bounty), user.id, parseInt(deadlineHours));
   
   // Update user data with new wallet and escrow values
   updateUser({
@@ -90,7 +91,7 @@ export default function PostTask() {
           <p className="subtitle">Set a bounty and let solvers work on your task</p>
 
           {/* Error message */}
-          {error && <div className="error-message">{error}</div>}
+          <ValidationError message={error} />
 
           {/* Post task form */}
           <form onSubmit={handlePostTask}>

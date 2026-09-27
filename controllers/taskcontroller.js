@@ -96,15 +96,60 @@ const enrichTask = (task, users = []) => {
   };
 };
 
+let cachedTasks = null;
+let cacheTime = null;
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
 // Get all open tasks (feed)
 const getOpenTasks = async (req, res) => {
   try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    
+    // Check if cache is still valid
+    if (cachedTasks && cacheTime && Date.now() - cacheTime < CACHE_DURATION) {
+      console.log('Returning cached tasks');
+      const startIdx = (page - 1) * limit;
+      const endIdx = startIdx + limit;
+      const paginatedTasks = cachedTasks.slice(startIdx, endIdx);
+      
+      return res.status(200).json({
+        message: 'Tasks fetched from cache',
+        tasks: paginatedTasks,
+        total: cachedTasks.length,
+        page: page,
+        pages: Math.ceil(cachedTasks.length / limit)
+      });
+    }
+
+    console.log('Fetching fresh tasks');
     const db = readDB();
     const users = db.users || [];
-    const enrichedTasks = (db.tasks || []).map(task => enrichTask(task, users));
+    
+    let openTasks = [];
+    if (db.tasksByStatus && db.tasksByStatus['open']) {
+      const taskIds = db.tasksByStatus['open'];
+      openTasks = taskIds.map(id => db.tasks.find(t => t.id === id));
+    } else {
+      openTasks = (db.tasks || []).filter(t => t.status === 'open');
+    }
+    
+    const enrichedTasks = openTasks.map(task => enrichTask(task, users));
+    
+    // Cache it
+    cachedTasks = enrichedTasks;
+    cacheTime = Date.now();
+    
+    const startIdx = (page - 1) * limit;
+    const endIdx = startIdx + limit;
+    const paginatedTasks = enrichedTasks.slice(startIdx, endIdx);
+
     res.status(200).json({
       message: 'Tasks fetched',
-      tasks: enrichedTasks,
+      tasks: paginatedTasks,
+      total: enrichedTasks.length,
+      page: page,
+      pages: Math.ceil(enrichedTasks.length / limit)
     });
   } catch (error) {
     res.status(500).json({ message: error.message });

@@ -2,6 +2,8 @@ import React, { useState, useContext } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { userAPI } from '../utils/api';
 import { AuthContext } from '../context/AuthContext';
+import { validateEmail } from '../utils/validation';
+import ValidationError from '../components/ValidationError';
 import '../styles/Auth.css';
 
 export default function Login() {
@@ -18,6 +20,19 @@ export default function Login() {
   const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
+    
+    // Validate email format
+    if (!validateEmail(email.trim())) {
+      setError('Please enter a valid email address');
+      return;
+    }
+    
+    // Validate password not empty
+    if (!password || password.length < 8) {
+      setError('Email or password incorrect'); // Don't give explicit password rule on login
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -31,8 +46,9 @@ export default function Login() {
       // Redirect to dashboard
       navigate('/dashboard');
     } catch (err) {
-      // Show error message
-      setError(err.response?.data?.message || 'Login failed');
+      // Show user-friendly error message
+      const message = err.response?.data?.message || 'Email or password incorrect';
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -46,7 +62,7 @@ export default function Login() {
         <h2>Login</h2>
 
         {/* Error message */}
-        {error && <div className="error-message">{error}</div>}
+        <ValidationError message={error} />
 
         {/* Login form */}
         <form onSubmit={handleLogin}>

@@ -2,26 +2,42 @@ const { readDB, writeDB } = require('../config/db');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { DEFAULT_WALLET_BALANCE } = require('../constants');
+const { validateUsername, validateEmail, validatePassword } = require('../utils/validation');
+const { AppError, handleError } = require('../utils/errorHandler');
+const logger = require('../utils/logger');
 
 // Register a new user
 const registerUser = async (req, res) => {
   try {
     const { username, email, password } = req.body;
 
-    // Read current database
-    const db = readDB();
-
-    // Check if user already exists
-    const userExists = db.users.find(u => u.email === email || u.username === username);
-    if (userExists) {
-      return res.status(400).json({ message: 'User already exists' });
+    if (!validateUsername(username)) {
+      throw new AppError('Invalid username format', 400);
+    }
+    
+    if (!validateEmail(email)) {
+      throw new AppError('Invalid email format', 400);
+    }
+    
+    if (!validatePassword(password)) {
+      throw new AppError('Password not strong enough', 400);
     }
 
-    // Hash password
+    const db = readDB();
+
+    const emailExists = db.users.find(u => u.email === email);
+    if (emailExists) {
+      throw new AppError('Email already registered', 400);
+    }
+
+    const usernameExists = db.users.find(u => u.username === username);
+    if (usernameExists) {
+      throw new AppError('Username already taken', 400);
+    }
+
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
 
-    // Create new user object
     const newUser = {
       id: Date.now().toString(),
       username,
@@ -40,13 +56,11 @@ const registerUser = async (req, res) => {
       createdAt: new Date(),
     };
 
-    // Add user to database
     db.users.push(newUser);
-
-    // Write updated database
     writeDB(db);
+    
+    logger.info('User registered', { userId: newUser.id, username });
 
-    // Return success with ALL user fields
     res.status(201).json({
       message: 'User registered successfully',
       user: {
@@ -62,7 +76,8 @@ const registerUser = async (req, res) => {
       },
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    logger.error('Registration failed', { error: error.message });
+    handleError(error, res);
   }
 };
 
@@ -70,30 +85,37 @@ const registerUser = async (req, res) => {
 const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
+    
+    logger.info('Login attempt', { email });
 
-    // Read database
     const db = readDB();
 
-    // Find user by email
-    const user = db.users.find(u => u.email === email);
+    // With manual index this could be faster, but leaving linear search if not indexed yet
+    let user;
+    if (db.usersByEmail) {
+      const userId = db.usersByEmail[email];
+      user = db.users.find(u => u.id === userId);
+    } else {
+      user = db.users.find(u => u.email === email);
+    }
+    
     if (!user) {
-      return res.status(400).json({ message: 'User not found' });
+      throw new AppError('User not found', 400);
     }
 
-    // Check if password is correct
     const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
     if (!isPasswordValid) {
-      return res.status(400).json({ message: 'Invalid password' });
+      throw new AppError('Invalid password', 400);
     }
 
-    // Create JWT token
     const token = jwt.sign(
       { id: user.id, email: user.email },
-      process.env.JWT_SECRET,
+      process.env.JWT_SECRET || 'secret',
       { expiresIn: '7d' }
     );
+    
+    logger.info('Login successful', { userId: user.id });
 
-    // Return token and user info with ALL fields
     res.status(200).json({
       message: 'Login successful',
       token,
@@ -110,7 +132,8 @@ const loginUser = async (req, res) => {
       },
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    logger.error('Login failed', { email: req.body.email, error: error.message });
+    handleError(error, res);
   }
 };
 

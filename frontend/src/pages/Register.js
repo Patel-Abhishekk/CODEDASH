@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { userAPI } from '../utils/api';
+import { validateUsername, validateEmail, validatePassword } from '../utils/validation';
+import ValidationError from '../components/ValidationError';
 import '../styles/Auth.css';
 
 export default function Register() {
@@ -18,15 +20,23 @@ export default function Register() {
     e.preventDefault();
     setError('');
 
-    // Check if passwords match
-    if (password !== confirmPassword) {
-      setError('Passwords do not match');
+    if (!validateUsername(username)) {
+      setError('Username: 3-20 chars, alphanumeric + underscore only');
+      return;
+    }
+    
+    if (!validateEmail(email)) {
+      setError('Invalid email format');
+      return;
+    }
+    
+    if (!validatePassword(password)) {
+      setError('Password must be 8+ chars with uppercase, lowercase, number, special char');
       return;
     }
 
-    // Check password length
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters');
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
       return;
     }
 
@@ -57,7 +67,7 @@ export default function Register() {
         <h2>Create Account</h2>
 
         {/* Error message */}
-        {error && <div className="error-message">{error}</div>}
+        <ValidationError message={error} />
 
         {/* Register form */}
         <form onSubmit={handleRegister}>
