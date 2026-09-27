@@ -54,26 +54,6 @@
       ]
     },
     {
-      "id": "1779272681558",
-      "username": "poster2",
-      "email": "poster2@example.com",
-      "passwordHash": "$2b$10$GlYujjqjHIeMBwz17hBR1Op9zyz7Oo/dQxa7FU.fFvMATD5UAxzPK",
-      "walletBalance": 500,
-      "escrowHeld": 0,
-      "engineerScore": {
-        "averageRating": 0,
-        "totalRatings": 0,
-        "bugsSolved": 0
-      },
-      "tasksPosted": [
-        "1779272773980",
-        "1779273040840"
-      ],
-      "tasksClaimed": [],
-      "tasksCompleted": [],
-      "createdAt": "2026-05-20T10:24:41.558Z"
-    },
-    {
       "id": "1779370924838",
       "username": "abhishek",
       "email": "1234@gmail.com",
