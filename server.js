@@ -3,8 +3,9 @@ const cors = require('cors');
 const helmet = require('helmet');
 const path = require('path');
 const os = require('os');
+require('dotenv').config(); // ✅ Load .env variables
+const connectDB = require('./config/mongodb'); // ✅ Import MongoDB connection
 
-// Import controllers and middleware
 const userRoutes = require('./routes/userRoutes');
 const taskRoutes = require('./routes/taskRoutes');
 
@@ -13,55 +14,39 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // ═══════════════════════════════════════════════════════════
+// CONNECT TO MONGODB ATLAS
+// ═══════════════════════════════════════════════════════════
+connectDB(); // ✅ Connect to MongoDB
+
+// ═══════════════════════════════════════════════════════════
 // MIDDLEWARE
 // ═══════════════════════════════════════════════════════════
-
-// Security: Apply Helmet (security headers)
 app.use(helmet());
-
-// Parse JSON
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// ═══════════════════════════════════════════════════════════
-// CORS CONFIGURATION (Allow Network Access)
-// ═══════════════════════════════════════════════════════════
+// CORS Configuration
 const corsOptions = {
-    origin: function (origin, callback) {
-        // Allow localhost and network access
-        const allowedOrigins = [
-            'http://localhost:3000',
-            'http://127.0.0.1:3000',
-            /^http:\/\/192\.168\..*:3000$/,  // Any 192.168.x.x:3000
-            /^http:\/\/10\..*:3000$/,        // Any 10.x.x.x:3000
-            /^http:\/\/172\..*:3000$/        // Any 172.x.x.x:3000
-        ];
-        
-        console.log('CORS request from:', origin);
-        
-        if (!origin) {
-            return callback(null, true);
-        }
+  origin: function (origin, callback) {
+    const allowedOrigins = [
+      'http://localhost:3000',
+      'http://127.0.0.1:3000',
+      /^http:\/\/192\.168\..*:3000$/,
+      /^http:\/\/10\..*:3000$/,
+    ];
 
-        // Check if origin is allowed
-        const isAllowed = allowedOrigins.some(allowedOrigin => {
-            if (allowedOrigin instanceof RegExp) {
-                return allowedOrigin.test(origin);
-            }
-            return origin === allowedOrigin;
-        });
-
-        if (isAllowed) {
-            callback(null, true);
-        } else {
-            console.log('CORS blocked:', origin);
-            callback(new Error('Not allowed by CORS'));
-        }
-    },
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-    optionsSuccessStatus: 200
+    if (!origin || allowedOrigins.some(allowed => {
+      if (allowed instanceof RegExp) return allowed.test(origin);
+      return origin === allowed;
+    })) {
+      callback(null, true);
+    } else {
+      callback(new Error('CORS not allowed'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 };
 
 app.use(cors(corsOptions));
@@ -70,30 +55,29 @@ app.use(cors(corsOptions));
 // SECURITY HEADERS
 // ═══════════════════════════════════════════════════════════
 app.use((req, res, next) => {
-    res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('X-Frame-Options', 'DENY');
-    res.setHeader('X-XSS-Protection', '1; mode=block');
-    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
-    next();
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  next();
 });
 
 // ═══════════════════════════════════════════════════════════
 // REQUEST LOGGING
 // ═══════════════════════════════════════════════════════════
 app.use((req, res, next) => {
-    console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
-    next();
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
+  next();
 });
 
 // ═══════════════════════════════════════════════════════════
-// HEALTH CHECK ENDPOINT
+// HEALTH CHECK
 // ═══════════════════════════════════════════════════════════
 app.get('/api/health', (req, res) => {
-    res.json({ 
-        status: 'ok', 
-        message: 'CodeDash API is running',
-        timestamp: new Date()
-    });
+  res.json({
+    status: 'ok',
+    message: 'CodeDash API running with MongoDB Atlas',
+    timestamp: new Date()
+  });
 });
 
 // ═══════════════════════════════════════════════════════════
@@ -103,82 +87,37 @@ app.use('/api/users', userRoutes);
 app.use('/api/tasks', taskRoutes);
 
 // ═══════════════════════════════════════════════════════════
-// 404 HANDLER
+// ERROR HANDLING
 // ═══════════════════════════════════════════════════════════
 app.use((req, res) => {
-    res.status(404).json({ 
-        message: 'Endpoint not found',
-        path: req.path,
-        method: req.method
-    });
+  res.status(404).json({ message: 'Endpoint not found' });
 });
 
-// ═══════════════════════════════════════════════════════════
-// ERROR HANDLER
-// ═══════════════════════════════════════════════════════════
 app.use((err, req, res, next) => {
-    console.error('Error:', {
-        message: err.message,
-        stack: err.stack,
-        timestamp: new Date()
-    });
-    
-    res.status(err.statusCode || 500).json({ 
-        message: err.message || 'Internal server error',
-        error: process.env.NODE_ENV === 'development' ? err.message : undefined
-    });
+  console.error('Error:', err);
+  res.status(500).json({ message: 'Internal server error' });
 });
 
 // ═══════════════════════════════════════════════════════════
 // START SERVER
 // ═══════════════════════════════════════════════════════════
 app.listen(PORT, '0.0.0.0', () => {
-    console.log('\n');
-    console.log('╔═════════════════════════════════════════════════════════╗');
-    console.log('║               🚀 CodeDash Backend Server Started 🚀               ║');
-    console.log('╚═════════════════════════════════════════════════════════╝');
-    console.log('\n');
-    console.log(`📡 Listening on all network interfaces on port ${PORT}`);
-    console.log('\n');
-    console.log('✅ Access from this computer:');
-    console.log(`   👉 http://localhost:${PORT}`);
-    console.log(`   👉 http://127.0.0.1:${PORT}`);
-    console.log('\n');
-    
-    console.log('✅ Access from network devices:');
-    // Get all network interfaces
-    const interfaces = os.networkInterfaces();
-    for (const [name, addrs] of Object.entries(interfaces)) {
-        addrs.forEach(addr => {
-            if (addr.family === 'IPv4' && !addr.internal) {
-                console.log(`   👉 http://${addr.address}:${PORT}`);
-            }
-        });
-    }
-    console.log('\n');
-    
-    console.log('📊 Database Location:');
-    console.log(`   👉 ${path.join(__dirname, 'database.json')}`);
-    console.log('\n');
-    
-    console.log('🔐 CORS Enabled for:');
-    console.log('   👉 localhost:3000');
-    console.log('   👉 All 192.168.x.x:3000');
-    console.log('   👉 All 10.x.x.x:3000');
-    console.log('   👉 All 172.x.x.x:3000');
-    console.log('\n');
-    
-    console.log('Press Ctrl+C to stop the server');
-    console.log('\n');
-});
-
-// Handle graceful shutdown
-process.on('SIGTERM', () => {
-    console.log('\n🛑 Server shutting down...');
-    process.exit(0);
-});
-
-process.on('SIGINT', () => {
-    console.log('\n🛑 Server shutting down...');
-    process.exit(0);
+  console.log('\n╔═════════════════════════════════════════════════════════╗');
+  console.log('║ 🚀 CodeDash Backend Server Started (MongoDB Atlas) 🚀 ║');
+  console.log('╚═════════════════════════════════════════════════════════╝\n');
+  console.log(`📡 Server listening on port ${PORT}`);
+  console.log(`🗄️  Database: MongoDB Atlas (Cloud)\n`);
+  console.log('✅ Access URLs:');
+  console.log(`   Localhost: http://localhost:${PORT}`);
+  
+  const interfaces = os.networkInterfaces();
+  for (const [name, addrs] of Object.entries(interfaces)) {
+    addrs.forEach(addr => {
+      if (addr.family === 'IPv4' && !addr.internal) {
+        console.log(`   Network:   http://${addr.address}:${PORT}`);
+      }
+    });
+  }
+  console.log('\n✅ Health Check: http://localhost:5000/api/health\n');
+  console.log('Press Ctrl+C to stop the server\n');
 });

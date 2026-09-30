@@ -1,15 +1,14 @@
-const { readDB, writeDB } = require('../config/db');
+const Chat = require('../models/Chat');
+const Task = require('../models/Task');
+const User = require('../models/User');
 
-// Validate if a user can participate in chat for a specific task
-const validateChatAccess = (taskId, userId) => {
-  const db = readDB();
-  const task = db.tasks.find(t => t.id === taskId);
+const validateChatAccess = async (taskId, userId) => {
+  const task = await Task.findOne({ id: taskId });
 
   if (!task) {
     return { valid: false, message: 'Task not found' };
   }
 
-  // Allowed statuses: claimed, under-review, approved
   const allowedStatuses = ['claimed', 'under-review', 'approved'];
   if (!allowedStatuses.includes(task.status)) {
     return { 
@@ -18,7 +17,6 @@ const validateChatAccess = (taskId, userId) => {
     };
   }
 
-  // Check if userId is poster OR solver
   const isPoster = task.postedBy === userId;
   const isSolver = task.claimedBy === userId;
 
@@ -27,7 +25,7 @@ const validateChatAccess = (taskId, userId) => {
   }
 
   const otherUserId = isPoster ? task.claimedBy : task.postedBy;
-  const otherUser = db.users.find(u => u.id === otherUserId);
+  const otherUser = await User.findOne({ id: otherUserId });
 
   return {
     valid: true,
@@ -38,7 +36,6 @@ const validateChatAccess = (taskId, userId) => {
   };
 };
 
-// Get chat history for a task
 const getChatHistory = async (req, res) => {
   try {
     const { taskId } = req.params;
@@ -48,13 +45,12 @@ const getChatHistory = async (req, res) => {
       return res.status(400).json({ message: 'Missing taskId or userId' });
     }
 
-    const access = validateChatAccess(taskId, userId);
+    const access = await validateChatAccess(taskId, userId);
     if (!access.valid) {
       return res.status(403).json({ message: access.message });
     }
 
-    const db = readDB();
-    const chats = (db.chats || []).filter(c => c.taskId === taskId);
+    const chats = await Chat.find({ taskId }).sort({ createdAt: 1 });
 
     res.status(200).json({
       message: 'Chat history fetched',
@@ -74,9 +70,8 @@ const getChatHistory = async (req, res) => {
   }
 };
 
-// Save a chat message to DB
 const saveChatMessage = async (taskId, senderId, messageText) => {
-  const access = validateChatAccess(taskId, senderId);
+  const access = await validateChatAccess(taskId, senderId);
   if (!access.valid) {
     throw new Error(access.message);
   }
@@ -89,29 +84,18 @@ const saveChatMessage = async (taskId, senderId, messageText) => {
     throw new Error('Message exceeds 500 characters limit');
   }
 
-  const db = readDB();
-  if (!db.chats) {
-    db.chats = [];
-  }
-
-  const newChat = {
-    id: Date.now().toString(),
+  const newChat = new Chat({
     taskId,
     senderId,
     receiverId: access.otherUserId,
-    message: messageText.trim(),
-    timestamp: new Date().toISOString(),
-    read: false,
-    createdAt: new Date().toISOString(),
-  };
+    message: messageText.trim()
+  });
 
-  db.chats.push(newChat);
-  writeDB(db);
+  await newChat.save();
 
   return newChat;
 };
 
-// Get all active chats for a user
 const getUserChats = async (req, res) => {
   try {
     const { userId } = req.params;
@@ -119,22 +103,20 @@ const getUserChats = async (req, res) => {
       return res.status(400).json({ message: 'User ID is required' });
     }
 
-    const db = readDB();
     const allowedStatuses = ['claimed', 'under-review', 'approved'];
 
-    // Find all tasks where user is poster or solver and status is eligible
-    const userTasks = (db.tasks || []).filter(
-      t => (t.postedBy === userId || t.claimedBy === userId) && allowedStatuses.includes(t.status)
-    );
+    const userTasks = await Task.find({
+      $or: [{ postedBy: userId }, { claimedBy: userId }],
+      status: { $in: allowedStatuses }
+    });
 
-    const chatsList = userTasks.map(task => {
+    const chatsListPromises = userTasks.map(async (task) => {
       const isPoster = task.postedBy === userId;
       const partnerId = isPoster ? task.claimedBy : task.postedBy;
-      const partner = (db.users || []).find(u => u.id === partnerId);
+      const partner = await User.findOne({ id: partnerId });
 
-      const taskChats = (db.chats || []).filter(c => c.taskId === task.id);
-      const lastMessage = taskChats.length > 0 ? taskChats[taskChats.length - 1] : null;
-      const unreadCount = taskChats.filter(c => c.receiverId === userId && !c.read).length;
+      const lastChat = await Chat.findOne({ taskId: task.id }).sort({ createdAt: -1 });
+      const unreadCount = await Chat.countDocuments({ taskId: task.id, receiverId: userId, read: false });
 
       return {
         taskId: task.id,
@@ -142,13 +124,14 @@ const getUserChats = async (req, res) => {
         taskStatus: task.status,
         partnerId,
         partnerUsername: partner ? partner.username : 'User',
-        lastMessage: lastMessage ? lastMessage.message : 'No messages yet',
-        lastTimestamp: lastMessage ? lastMessage.timestamp : task.updatedAt || task.createdAt,
+        lastMessage: lastChat ? lastChat.message : 'No messages yet',
+        lastTimestamp: lastChat ? lastChat.timestamp : task.createdAt,
         unreadCount,
       };
     });
 
-    // Sort by latest message/timestamp
+    const chatsList = await Promise.all(chatsListPromises);
+
     chatsList.sort((a, b) => new Date(b.lastTimestamp) - new Date(a.lastTimestamp));
 
     res.status(200).json({
@@ -160,7 +143,6 @@ const getUserChats = async (req, res) => {
   }
 };
 
-// Mark messages as read
 const markMessagesRead = async (req, res) => {
   try {
     const { taskId, userId } = req.body;
@@ -168,21 +150,7 @@ const markMessagesRead = async (req, res) => {
       return res.status(400).json({ message: 'Missing taskId or userId' });
     }
 
-    const db = readDB();
-    let updated = false;
-
-    if (db.chats) {
-      db.chats.forEach(chat => {
-        if (chat.taskId === taskId && chat.receiverId === userId && !chat.read) {
-          chat.read = true;
-          updated = true;
-        }
-      });
-    }
-
-    if (updated) {
-      writeDB(db);
-    }
+    await Chat.updateMany({ taskId, receiverId: userId, read: false }, { read: true });
 
     res.status(200).json({ message: 'Messages marked as read' });
   } catch (error) {

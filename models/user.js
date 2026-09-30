@@ -1,85 +1,26 @@
 const mongoose = require('mongoose');
 
-const userSchema = new mongoose.Schema(
-  {
-    // Basic profile info
-    username: {
-      type: String,
-      required: true,
-      unique: true,
-      trim: true,
-      minlength: 3,
-    },
-    email: {
-      type: String,
-      required: true,
-      unique: true,
-      lowercase: true,
-    },
-    passwordHash: {
-      type: String,
-      required: true,
-    },
-
-    // Wallet & Escrow
-    walletBalance: {
-      type: Number,
-      default: 100,
-      min: 0,
-    },
-    escrowHeld: {
-      type: Number,
-      default: 0,
-      min: 0,
-    },
-
-    // Engineer Score (reputation)
-    engineerScore: {
-      averageRating: {
-        type: Number,
-        default: 0,
-        min: 0,
-        max: 5,
-      },
-      totalRatings: {
-        type: Number,
-        default: 0,
-        min: 0,
-      },
-      bugsSolved: {
-        type: Number,
-        default: 0,
-        min: 0,
-      },
-    },
-
-    // Activity tracking
-    tasksPosted: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Task',
-      },
-    ],
-    tasksClaimed: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Task',
-      },
-    ],
-    tasksCompleted: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Task',
-      },
-    ],
-
-    // Timestamps
-    createdAt: {
-      type: Date,
-      default: Date.now,
-    },
+const userSchema = new mongoose.Schema({
+  id: { type: String, required: true, unique: true },
+  username: { type: String, required: true, unique: true, minlength: 3, maxlength: 20 },
+  email: { type: String, required: true, unique: true, match: /^[^\s@]+@[^\s@]+\.[^\s@]+$/ },
+  passwordHash: { type: String, required: true },
+  walletBalance: { type: Number, default: 1000 },
+  escrowHeld: { type: Number, default: 0 },
+  engineerScore: {
+    averageRating: { type: Number, default: 0 },
+    totalRatings: { type: Number, default: 0 },
+    bugsSolved: { type: Number, default: 0 }
   },
-  { timestamps: true }
-);
+  tasksPosted: [String],
+  tasksClaimed: [String],
+  tasksCompleted: [String],
+  createdAt: { type: Date, default: Date.now }
+});
+
+// Create indexes for faster queries
+userSchema.index({ email: 1 });
+userSchema.index({ username: 1 });
+userSchema.index({ id: 1 });
 
 module.exports = mongoose.model('User', userSchema);

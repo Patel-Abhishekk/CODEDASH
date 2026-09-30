@@ -1,247 +1,142 @@
-const { readDB, writeDB } = require('../config/db');
-const { MIN_BOUNTY, MAX_BOUNTY } = require('../constants');
+const Task = require('../models/Task');
+const User = require('../models/User');
 const { createNotification } = require('./notificationController');
-// Post a new task
+
 const postTask = async (req, res) => {
   try {
     const { title, description, bounty, userId, deadlineHours } = req.body;
 
-    // Validate input
-    // Validate input
-if (!title || !description || !bounty || !userId) {
-  return res.status(400).json({ message: 'Missing required fields' });
-}
+    if (!title || !description || !bounty || !userId) {
+      return res.status(400).json({ message: 'Missing required fields' });
+    }
+    
+    if (bounty < 100 || bounty > 100000) {
+      return res.status(400).json({ message: 'Bounty must be ₹100-₹100,000' });
+    }
 
-// Validate bounty amount in INR
-if (bounty < MIN_BOUNTY) {
-  return res.status(400).json({ message: `Minimum bounty is ₹${MIN_BOUNTY}` });
-}
-
-if (bounty > MAX_BOUNTY) {
-  return res.status(400).json({ message: `Maximum bounty is ₹${MAX_BOUNTY}` });
-}
-
-    // Set default deadline to 2 hours if not provided
-    const hours = deadlineHours || 2;
-
-    // Read database
-    const db = readDB();
-
-    // Find user
-    const user = db.users.find(u => u.id === userId);
+    const user = await User.findOne({ id: userId });
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // Check if user has enough balance
     if (user.walletBalance < bounty) {
       return res.status(400).json({ message: 'Insufficient wallet balance' });
     }
 
-    // Create new task
-    const newTask = {
+    const newTask = new Task({
       id: Date.now().toString(),
       title,
       description,
       bounty,
       postedBy: userId,
-      status: 'open',
-      claimedBy: null,
-      claimedAt: null,
-      claimDeadline: null,
-      deadlineHours: hours, // Store the deadline hours for reference
-      proofOfWork: null,
-      submittedAt: null,
-      approvedAt: null,
-      rating: null,
-      escrowResolved: false,
-      escrowResolvedAt: null,
-      escrowSplitRatio: null,
-      createdAt: new Date(),
-    };
+      deadlineHours: deadlineHours || 2,
+      status: 'open'
+    });
 
-    // Deduct bounty from user's wallet (escrow)
+    await newTask.save();
+
     user.walletBalance -= bounty;
     user.escrowHeld += bounty;
     user.tasksPosted.push(newTask.id);
+    await user.save();
 
-    // Add task to database
-    db.tasks.push(newTask);
-
-    // Update user in database
-    const userIndex = db.users.findIndex(u => u.id === userId);
-    db.users[userIndex] = user;
-
-    // Write updated database
-    writeDB(db);
-
-    // Return success
-    res.status(201).json({
-      message: 'Task posted successfully',
-      task: newTask,
-    });
+    console.log(`✅ Task posted: ${title} by ${userId}`);
+    res.status(201).json({ message: 'Task posted successfully', task: newTask });
   } catch (error) {
+    console.error('Post task error:', error);
     res.status(500).json({ message: error.message });
   }
 };
 
-const enrichTask = (task, users = []) => {
+const enrichTask = async (task) => {
   if (!task) return task;
-  const poster = users.find(u => u.id === task.postedBy);
-  const solver = task.claimedBy ? users.find(u => u.id === task.claimedBy) : null;
+  const taskObj = typeof task.toObject === 'function' ? task.toObject() : task;
+  
+  const poster = await User.findOne({ id: task.postedBy });
+  const solver = task.claimedBy ? await User.findOne({ id: task.claimedBy }) : null;
+  
   return {
-    ...task,
+    ...taskObj,
     postedByUsername: poster ? poster.username : 'Unknown',
     claimedByUsername: solver ? solver.username : null,
   };
 };
 
-let cachedTasks = null;
-let cacheTime = null;
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
-
-// Get all open tasks (feed)
 const getOpenTasks = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
-    
-    // Check if cache is still valid
-    if (cachedTasks && cacheTime && Date.now() - cacheTime < CACHE_DURATION) {
-      console.log('Returning cached tasks');
-      const startIdx = (page - 1) * limit;
-      const endIdx = startIdx + limit;
-      const paginatedTasks = cachedTasks.slice(startIdx, endIdx);
-      
-      return res.status(200).json({
-        message: 'Tasks fetched from cache',
-        tasks: paginatedTasks,
-        total: cachedTasks.length,
-        page: page,
-        pages: Math.ceil(cachedTasks.length / limit)
-      });
-    }
+    const skip = (page - 1) * limit;
 
-    console.log('Fetching fresh tasks');
-    const db = readDB();
-    const users = db.users || [];
+    const tasks = await Task.find({ status: 'open' }).sort({ createdAt: -1 }).skip(skip).limit(limit);
+    const total = await Task.countDocuments({ status: 'open' });
     
-    let openTasks = [];
-    if (db.tasksByStatus && db.tasksByStatus['open']) {
-      const taskIds = db.tasksByStatus['open'];
-      openTasks = taskIds.map(id => db.tasks.find(t => t.id === id));
-    } else {
-      openTasks = (db.tasks || []).filter(t => t.status === 'open');
-    }
-    
-    const enrichedTasks = openTasks.map(task => enrichTask(task, users));
-    
-    // Cache it
-    cachedTasks = enrichedTasks;
-    cacheTime = Date.now();
-    
-    const startIdx = (page - 1) * limit;
-    const endIdx = startIdx + limit;
-    const paginatedTasks = enrichedTasks.slice(startIdx, endIdx);
+    const enrichedTasksPromises = tasks.map(t => enrichTask(t));
+    const enrichedTasks = await Promise.all(enrichedTasksPromises);
 
-    res.status(200).json({
-      message: 'Tasks fetched',
-      tasks: paginatedTasks,
-      total: enrichedTasks.length,
-      page: page,
-      pages: Math.ceil(enrichedTasks.length / limit)
+    console.log(`✅ Retrieved ${tasks.length} open tasks`);
+    res.json({ 
+      message: 'Open tasks fetched', 
+      tasks: enrichedTasks,
+      total,
+      page,
+      pages: Math.ceil(total / limit)
     });
   } catch (error) {
+    console.error('Get tasks error:', error);
     res.status(500).json({ message: error.message });
   }
 };
 
-// Get task by ID
 const getTaskById = async (req, res) => {
   try {
     const { taskId } = req.params;
-
-    const db = readDB();
-    const users = db.users || [];
-
-    // Find task
-    const task = db.tasks.find(t => t.id === taskId);
+    const task = await Task.findOne({ id: taskId });
+    
     if (!task) {
       return res.status(404).json({ message: 'Task not found' });
     }
-
-    res.status(200).json({
-      message: 'Task fetched',
-      task: enrichTask(task, users),
-    });
+    
+    const enrichedTask = await enrichTask(task);
+    res.json({ message: 'Task fetched', task: enrichedTask });
   } catch (error) {
+    console.error('Get task error:', error);
     res.status(500).json({ message: error.message });
   }
 };
 
-// Claim a task
 const claimTask = async (req, res) => {
   try {
     const { taskId, userId } = req.body;
 
-    // Validate input
     if (!taskId || !userId) {
       return res.status(400).json({ message: 'Missing required fields' });
     }
 
-    // Read database
-    const db = readDB();
-
-    // Find task
-    const task = db.tasks.find(t => t.id === taskId);
+    const task = await Task.findOne({ id: taskId });
     if (!task) {
       return res.status(404).json({ message: 'Task not found' });
     }
-    console.log('Task Status:', task.status);
-console.log('Task Claimed By:', task.claimedBy);
-console.log('User ID:', userId);
 
-    // Check if task is open
     if (task.status !== 'open') {
-      return res.status(400).json({ message: 'Task is not available for claiming' });
+      return res.status(400).json({ message: 'Task already claimed' });
     }
 
-    // Check if user is trying to claim their own task
     if (task.postedBy === userId) {
       return res.status(400).json({ message: 'You cannot claim your own task' });
     }
 
-    // Claim the task (atomic operation)
-    const claimedAt = new Date();
-    const deadlineHours = task.deadlineHours || 2; // Use task's deadline hours
-    const claimDeadline = new Date(claimedAt.getTime() + deadlineHours * 60 * 60 * 1000);
-
-    task.claimedBy = userId;
-    task.claimedAt = claimedAt;
-    task.claimDeadline = claimDeadline;
     task.status = 'claimed';
+    task.claimedBy = userId;
+    task.claimedAt = new Date();
+    task.claimDeadline = new Date(Date.now() + (task.deadlineHours || 2) * 60 * 60 * 1000);
+    await task.save();
 
-    // Update user's tasksClaimed
-    const user = db.users.find(u => u.id === userId);
-    if (user) {
-      user.tasksClaimed.push(taskId);
-    }
+    const user = await User.findOne({ id: userId });
+    user.tasksClaimed.push(taskId);
+    await user.save();
 
-    // Find and update task in database
-    const taskIndex = db.tasks.findIndex(t => t.id === taskId);
-    db.tasks[taskIndex] = task;
-
-    // Update user in database
-    const userIndex = db.users.findIndex(u => u.id === userId);
-    if (userIndex !== -1) {
-      db.users[userIndex] = user;
-    }
-
-    // Write updated database
-    writeDB(db);
-
-    // Notify task poster with rich notification and Socket.io broadcast
-    createNotification(
+    await createNotification(
       task.postedBy,
       'task_claimed',
       task.id,
@@ -256,76 +151,56 @@ console.log('User ID:', userId);
       `/task/${task.id}`
     );
 
-    // Return success
-    res.status(200).json({
-      message: 'Task claimed successfully',
-      task: task,
+    console.log(`✅ Task claimed: ${taskId} by ${userId}`);
+    res.json({ 
+      message: 'Task claimed successfully', 
+      task,
       claimedAt: task.claimedAt,
-      claimDeadline: task.claimDeadline,
+      claimDeadline: task.claimDeadline
     });
   } catch (error) {
+    console.error('Claim task error:', error);
     res.status(500).json({ message: error.message });
   }
 };
 
-// Submit proof of work
 const submitProof = async (req, res) => {
   try {
     const { taskId, userId, proofOfWork } = req.body;
 
-    // Validate input
     if (!taskId || !userId || !proofOfWork) {
       return res.status(400).json({ message: 'Missing required fields' });
     }
 
-    // Read database
-    const db = readDB();
-
-    // Find task
-    const task = db.tasks.find(t => t.id === taskId);
+    const task = await Task.findOne({ id: taskId });
     if (!task) {
       return res.status(404).json({ message: 'Task not found' });
     }
 
-    // Check if task is claimed
     if (task.status !== 'claimed') {
       return res.status(400).json({ message: 'Task must be in claimed status' });
     }
 
-    // Check if the user claiming the task is the one submitting proof
     if (task.claimedBy !== userId) {
       return res.status(400).json({ message: 'Only the claimer can submit proof' });
     }
 
-    // Check if deadline has passed
     if (new Date() > task.claimDeadline) {
       task.status = 'open';
       task.claimedBy = null;
       task.claimedAt = null;
       task.claimDeadline = null;
-
-      const taskIndex = db.tasks.findIndex(t => t.id === taskId);
-      db.tasks[taskIndex] = task;
-      writeDB(db);
-
+      await task.save();
       return res.status(400).json({ message: 'Claim deadline has passed. Task reverted to open.' });
     }
 
-    // Submit proof
     task.proofOfWork = proofOfWork;
     task.submittedAt = new Date();
     task.status = 'under-review';
+    await task.save();
 
-    // Find and update task in database
-    const taskIndex = db.tasks.findIndex(t => t.id === taskId);
-    db.tasks[taskIndex] = task;
-
-    // Write updated database
-    writeDB(db);
-
-    // Notify task poster with rich notification and Socket.io broadcast
-    const solver = db.users.find(u => u.id === userId);
-    createNotification(
+    const solver = await User.findOne({ id: userId });
+    await createNotification(
       task.postedBy,
       'proof_submitted',
       task.id,
@@ -339,10 +214,9 @@ const submitProof = async (req, res) => {
       `/approve-task/${task.id}`
     );
 
-    // Return success
     res.status(200).json({
       message: 'Proof of work submitted successfully',
-      task: task,
+      task,
       submittedAt: task.submittedAt,
     });
   } catch (error) {
@@ -350,91 +224,59 @@ const submitProof = async (req, res) => {
   }
 };
 
-// Approve task and give rating
 const approveTask = async (req, res) => {
   try {
     const { taskId, userId, rating } = req.body;
 
-    // Validate input
     if (!taskId || !userId || !rating) {
       return res.status(400).json({ message: 'Missing required fields' });
     }
 
-    // Validate rating is 1-5
     if (rating < 1 || rating > 5) {
       return res.status(400).json({ message: 'Rating must be between 1 and 5' });
     }
 
-    // Read database
-    const db = readDB();
-
-    // Find task
-    const task = db.tasks.find(t => t.id === taskId);
+    const task = await Task.findOne({ id: taskId });
     if (!task) {
       return res.status(404).json({ message: 'Task not found' });
     }
 
-    // Check if task is under-review
     if (task.status !== 'under-review') {
       return res.status(400).json({ message: 'Task must be under review to approve' });
     }
 
-    // Check if user is the poster
     if (task.postedBy !== userId) {
       return res.status(400).json({ message: 'Only the poster can approve this task' });
     }
 
-    // Approve task
     task.status = 'approved';
     task.approvedAt = new Date();
     task.rating = rating;
     task.escrowResolved = true;
     task.escrowResolvedAt = new Date();
+    await task.save();
 
-    // Find solver
-    const solver = db.users.find(u => u.id === task.claimedBy);
-    if (!solver) {
-      return res.status(404).json({ message: 'Solver not found' });
-    }
+    const solver = await User.findOne({ id: task.claimedBy });
+    if (!solver) return res.status(404).json({ message: 'Solver not found' });
 
-    // Find poster
-    const poster = db.users.find(u => u.id === task.postedBy);
-    if (!poster) {
-      return res.status(404).json({ message: 'Poster not found' });
-    }
+    const poster = await User.findOne({ id: task.postedBy });
+    if (!poster) return res.status(404).json({ message: 'Poster not found' });
 
-    // Give 100% bounty to solver
     solver.walletBalance += task.bounty;
     solver.tasksCompleted.push(taskId);
     solver.engineerScore.bugsSolved += 1;
 
-    // Update solver's moving average rating
     const totalRatings = solver.engineerScore.totalRatings || 0;
     const currentAvg = solver.engineerScore.averageRating || 0;
     const newAvg = (currentAvg * totalRatings + rating) / (totalRatings + 1);
     solver.engineerScore.averageRating = parseFloat(newAvg.toFixed(2));
     solver.engineerScore.totalRatings = totalRatings + 1;
+    await solver.save();
 
-    // Remove bounty from poster's escrow
     poster.escrowHeld -= task.bounty;
+    await poster.save();
 
-    // Update task in database
-    const taskIndex = db.tasks.findIndex(t => t.id === taskId);
-    db.tasks[taskIndex] = task;
-
-    // Update solver in database
-    const solverIndex = db.users.findIndex(u => u.id === task.claimedBy);
-    db.users[solverIndex] = solver;
-
-    // Update poster in database
-    const posterIndex = db.users.findIndex(u => u.id === task.postedBy);
-    db.users[posterIndex] = poster;
-
-    // Write updated database
-    writeDB(db);
-
-    // Notify solver with rich notification and Socket.io broadcast
-    createNotification(
+    await createNotification(
       task.claimedBy,
       'task_approved',
       task.id,
@@ -449,10 +291,9 @@ const approveTask = async (req, res) => {
       `/task/${task.id}`
     );
 
-    // Return success
     res.status(200).json({
       message: 'Task approved successfully',
-      task: task,
+      task,
       solverScore: solver.engineerScore,
     });
   } catch (error) {
@@ -460,226 +301,95 @@ const approveTask = async (req, res) => {
   }
 };
 
-// Check and resolve ghosting (48-hour abandonment)
+const checkAndResolveGhostingCore = async (autoResolve = false) => {
+  const currentTime = new Date();
+  const underReviewTasks = await Task.find({ status: 'under-review' });
+
+  let resolvedCount = 0;
+  const resolvedTasksList = [];
+
+  for (const task of underReviewTasks) {
+    const submittedTime = new Date(task.submittedAt);
+    const hoursElapsed = (currentTime - submittedTime) / (1000 * 60 * 60);
+
+    if (hoursElapsed > 48) {
+      const halfBounty = task.bounty / 2;
+
+      const solver = await User.findOne({ id: task.claimedBy });
+      const poster = await User.findOne({ id: task.postedBy });
+
+      if (solver && poster) {
+        solver.walletBalance += halfBounty;
+        solver.tasksCompleted.push(task.id);
+        solver.engineerScore.bugsSolved += 1;
+        await solver.save();
+
+        poster.walletBalance += halfBounty;
+        poster.escrowHeld -= task.bounty;
+        await poster.save();
+
+        task.status = 'abandoned';
+        task.escrowResolved = true;
+        task.escrowResolvedAt = currentTime;
+        task.escrowSplitRatio = {
+          solverPercentage: 50,
+          posterPercentage: 50,
+        };
+        await task.save();
+
+        await createNotification(
+          task.postedBy,
+          'task_abandoned',
+          task.id,
+          `Task abandoned (48h timeout): ${task.title}. 50/50 split applied.`,
+          task.claimedBy,
+          { taskTitle: task.title, splitAmount: halfBounty, totalBounty: task.bounty },
+          `/task/${task.id}`
+        );
+
+        await createNotification(
+          task.claimedBy,
+          'task_abandoned',
+          task.id,
+          `Task abandoned (48h timeout): ${task.title}. 50/50 split applied.`,
+          task.postedBy,
+          { taskTitle: task.title, splitAmount: halfBounty, totalBounty: task.bounty },
+          `/task/${task.id}`
+        );
+
+        resolvedCount++;
+        resolvedTasksList.push({
+          id: task.id,
+          title: task.title,
+          bounty: task.bounty,
+          refund: halfBounty,
+          solverPayment: halfBounty,
+        });
+      }
+    }
+  }
+  return { resolvedCount, resolvedTasksList };
+};
+
 const checkAndResolveGhosting = async (req, res) => {
   try {
-    const db = readDB();
-    const currentTime = new Date();
-
-    // Find all tasks that are under-review
-    const underReviewTasks = db.tasks.filter(t => t.status === 'under-review');
-
-    let resolvedTasks = 0;
-
-    underReviewTasks.forEach(task => {
-      // Check if 48 hours have passed since submission
-      const submittedTime = new Date(task.submittedAt);
-      const hoursElapsed = (currentTime - submittedTime) / (1000 * 60 * 60);
-
-      if (hoursElapsed > 48) {
-        // 48 hours passed - apply 50/50 ghosting rule
-        const halfBounty = task.bounty / 2;
-
-        // Find solver and poster
-        const solver = db.users.find(u => u.id === task.claimedBy);
-        const poster = db.users.find(u => u.id === task.postedBy);
-
-        if (solver && poster) {
-          // Give 50% to solver
-          solver.walletBalance += halfBounty;
-          solver.tasksCompleted.push(task.id);
-          solver.engineerScore.bugsSolved += 1;
-
-          // Refund 50% to poster
-          poster.walletBalance += halfBounty;
-          poster.escrowHeld -= task.bounty;
-
-          // Mark task as abandoned
-          task.status = 'abandoned';
-          task.escrowResolved = true;
-          task.escrowResolvedAt = currentTime;
-          task.escrowSplitRatio = {
-            solverPercentage: 50,
-            posterPercentage: 50,
-          };
-
-          // Update users in database
-          const solverIndex = db.users.findIndex(u => u.id === task.claimedBy);
-          const posterIndex = db.users.findIndex(u => u.id === task.postedBy);
-
-          if (solverIndex !== -1) {
-            db.users[solverIndex] = solver;
-          }
-          if (posterIndex !== -1) {
-            db.users[posterIndex] = poster;
-          }
-
-          // Trigger notifications to poster and solver
-          createNotification(
-            task.postedBy,
-            'task_abandoned',
-            task.id,
-            `Task abandoned (48h timeout): ${task.title}. 50/50 split applied.`,
-            task.claimedBy,
-            {
-              taskTitle: task.title,
-              splitAmount: halfBounty,
-              totalBounty: task.bounty,
-            },
-            `/task/${task.id}`
-          );
-          createNotification(
-            task.claimedBy,
-            'task_abandoned',
-            task.id,
-            `Task abandoned (48h timeout): ${task.title}. 50/50 split applied.`,
-            task.postedBy,
-            {
-              taskTitle: task.title,
-              splitAmount: halfBounty,
-              totalBounty: task.bounty,
-            },
-            `/task/${task.id}`
-          );
-
-          resolvedTasks++;
-        }
-      }
-    });
-
-    // Update all modified tasks in database
-    const taskIndices = underReviewTasks.map(t => db.tasks.findIndex(task => task.id === t.id));
-    taskIndices.forEach((index, i) => {
-      if (index !== -1) {
-        db.tasks[index] = underReviewTasks[i];
-      }
-    });
-
-    // Write updated database
-    writeDB(db);
-
-    // Return results
+    const { resolvedCount } = await checkAndResolveGhostingCore();
     res.status(200).json({
-      message: `Ghosting check complete. ${resolvedTasks} task(s) auto-resolved with 50/50 split.`,
-      resolvedTasks: resolvedTasks,
+      message: `Ghosting check complete. ${resolvedCount} task(s) auto-resolved with 50/50 split.`,
+      resolvedTasks: resolvedCount,
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-// Auto-resolve ghosting (48-hour abandonment)
 const autoResolveGhosting = async (req, res) => {
   try {
-    const db = readDB();
-    const currentTime = new Date();
-    let resolvedCount = 0;
-
-    // Find all tasks that are under-review
-    const underReviewTasks = db.tasks.filter(t => t.status === 'under-review');
-
-    const resolvedTasksList = [];
-
-    underReviewTasks.forEach(task => {
-      // Check if 48 hours have passed since submission
-      const submittedTime = new Date(task.submittedAt);
-      const hoursElapsed = (currentTime - submittedTime) / (1000 * 60 * 60);
-
-      if (hoursElapsed >= 48) {
-        // 48 hours passed - apply 50/50 ghosting rule
-        const halfBounty = task.bounty / 2;
-
-        // Find solver and poster
-        const solver = db.users.find(u => u.id === task.claimedBy);
-        const poster = db.users.find(u => u.id === task.postedBy);
-
-        if (solver && poster) {
-          // Give 50% to solver
-          solver.walletBalance += halfBounty;
-          solver.tasksCompleted.push(task.id);
-          solver.engineerScore.bugsSolved += 1;
-
-          // Refund 50% to poster
-          poster.walletBalance += halfBounty;
-          poster.escrowHeld -= task.bounty;
-
-          // Mark task as abandoned
-          task.status = 'abandoned';
-          task.escrowResolved = true;
-          task.escrowResolvedAt = currentTime;
-          task.escrowSplitRatio = {
-            solverPercentage: 50,
-            posterPercentage: 50,
-          };
-
-          // Update users in database
-          const solverIndex = db.users.findIndex(u => u.id === task.claimedBy);
-          const posterIndex = db.users.findIndex(u => u.id === task.postedBy);
-
-          if (solverIndex !== -1) {
-            db.users[solverIndex] = solver;
-          }
-          if (posterIndex !== -1) {
-            db.users[posterIndex] = poster;
-          }
-
-          // Trigger notifications to poster and solver
-          createNotification(
-            task.postedBy,
-            'task_abandoned',
-            task.id,
-            `Task abandoned (48h timeout): ${task.title}. 50/50 split applied.`,
-            task.claimedBy,
-            {
-              taskTitle: task.title,
-              splitAmount: halfBounty,
-              totalBounty: task.bounty,
-            },
-            `/task/${task.id}`
-          );
-          createNotification(
-            task.claimedBy,
-            'task_abandoned',
-            task.id,
-            `Task abandoned (48h timeout): ${task.title}. 50/50 split applied.`,
-            task.postedBy,
-            {
-              taskTitle: task.title,
-              splitAmount: halfBounty,
-              totalBounty: task.bounty,
-            },
-            `/task/${task.id}`
-          );
-
-          resolvedCount++;
-          resolvedTasksList.push({
-            id: task.id,
-            title: task.title,
-            bounty: task.bounty,
-            refund: halfBounty,
-            solverPayment: halfBounty,
-          });
-        }
-      }
-    });
-
-    // Update all modified tasks in database
-    underReviewTasks.forEach(task => {
-      const taskIndex = db.tasks.findIndex(t => t.id === task.id);
-      if (taskIndex !== -1) {
-        db.tasks[taskIndex] = task;
-      }
-    });
-
-    // Write updated database
-    writeDB(db);
-
+    const { resolvedCount, resolvedTasksList } = await checkAndResolveGhostingCore();
     console.log(`Auto-resolved ${resolvedCount} abandoned tasks`);
-
-    // Return results
     res.status(200).json({
       message: `Checked ghosting. ${resolvedCount} task(s) auto-resolved with 50/50 split.`,
-      resolvedCount: resolvedCount,
+      resolvedCount,
       resolvedTasks: resolvedTasksList,
     });
   } catch (error) {
@@ -687,215 +397,144 @@ const autoResolveGhosting = async (req, res) => {
   }
 };
 
-// Delete task (only open tasks by poster)
 const deleteTask = async (req, res) => {
   try {
     const { taskId, userId } = req.body;
 
-    // Validate request body
     if (!taskId || !userId) {
       return res.status(400).json({ message: 'Missing required fields' });
     }
 
-    // Read database
-    const db = readDB();
-
-    // Find task by taskId
-    const task = db.tasks.find(t => t.id === taskId);
-    if (!task) {
-      return res.status(400).json({ message: 'Task not found' });
-    }
-
-    // Validate poster
+    const task = await Task.findOne({ id: taskId });
+    if (!task) return res.status(400).json({ message: 'Task not found' });
+    
     if (task.postedBy !== userId) {
       return res.status(400).json({ message: 'Only the task poster can delete this task' });
     }
 
-    // Validate status is open ONLY
     if (task.status !== 'open') {
       return res.status(400).json({ message: 'Only open tasks can be deleted' });
     }
 
-    // Find user
-    const user = db.users.find(u => u.id === userId);
-    if (!user) {
-      return res.status(400).json({ message: 'User not found' });
-    }
+    const user = await User.findOne({ id: userId });
+    if (!user) return res.status(400).json({ message: 'User not found' });
 
-    // Refund bounty to user's wallet & subtract from escrow
     user.walletBalance += task.bounty;
     user.escrowHeld -= task.bounty;
+    user.tasksPosted = user.tasksPosted.filter(id => id !== taskId);
+    await user.save();
 
-    // Remove task from tasksPosted array
-    user.tasksPosted = (user.tasksPosted || []).filter(id => id !== taskId);
+    await Task.deleteOne({ id: taskId });
 
-    // Update user in database
-    const userIndex = db.users.findIndex(u => u.id === userId);
-    if (userIndex !== -1) {
-      db.users[userIndex] = user;
-    }
-
-    // Delete task from database
-    db.tasks = db.tasks.filter(t => t.id !== taskId);
-
-    // Write updated database
-    writeDB(db);
-
-    // Return success response
     res.status(200).json({
       message: 'Task deleted successfully',
-      user: user,
+      user,
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-// Reject task proof of work and request revision
 const rejectTask = async (req, res) => {
   try {
     const { taskId, userId, rejectionReason } = req.body;
 
-    // Validate request body
     if (!taskId || !userId || !rejectionReason) {
       return res.status(400).json({ message: 'Missing required fields' });
     }
 
-    // Validate rejection reason length
     if (typeof rejectionReason !== 'string' || rejectionReason.trim().length < 10) {
       return res.status(400).json({ message: 'Rejection reason must be at least 10 characters' });
     }
 
-    // Read database
-    const db = readDB();
-
-    // Find task by taskId
-    const task = db.tasks.find(t => t.id === taskId);
-    if (!task) {
-      return res.status(400).json({ message: 'Task not found' });
-    }
-
-    // Validate only poster can reject
+    const task = await Task.findOne({ id: taskId });
+    if (!task) return res.status(400).json({ message: 'Task not found' });
+    
     if (task.postedBy !== userId) {
       return res.status(400).json({ message: 'Only the poster can reject this task' });
     }
 
-    // Validate task status is under-review ONLY
     if (task.status !== 'under-review') {
       return res.status(400).json({ message: 'Task must be under-review to reject' });
     }
 
-    // Reject task logic: change status back to claimed, clear proof & submittedAt, set rejection fields
     task.status = 'claimed';
     task.proofOfWork = null;
     task.submittedAt = null;
     task.rejectionReason = rejectionReason.trim();
     task.rejectedAt = new Date();
     task.rejectionCount = (task.rejectionCount || 0) + 1;
+    
+    await task.save();
 
-    // Update task in database
-    const taskIndex = db.tasks.findIndex(t => t.id === taskId);
-    if (taskIndex !== -1) {
-      db.tasks[taskIndex] = task;
-    }
-
-    // Write updated database
-    writeDB(db);
-
-    // Notify solver with rich notification and Socket.io broadcast
-    const poster = db.users.find(u => u.id === userId);
-    createNotification(
-      task.claimedBy,
-      'task_rejected',
-      task.id,
-      `${poster ? poster.username : 'Poster'} rejected your proof on: ${task.title}`,
-      userId,
-      {
-        taskTitle: task.title,
-        posterUsername: poster ? poster.username : 'Poster',
-        reason: rejectionReason.trim(),
-      },
-      `/submit-proof/${task.id}`
-    );
-
-    // Return success
     res.status(200).json({
-      message: 'Task rejected and requested revision successfully',
-      task: task,
-      rejectionReason: task.rejectionReason,
-      rejectedAt: task.rejectedAt,
-      rejectionCount: task.rejectionCount,
+      message: 'Task proof rejected. Reverted to claimed status.',
+      task,
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-// Search, filter, and sort tasks
 const searchTasks = async (req, res) => {
   try {
     const { search, minBounty, maxBounty, deadline, status, sort, type, userId } = req.query;
-    const db = readDB();
-    const users = db.users || [];
-    let tasks = (db.tasks || []).map(task => enrichTask(task, users));
 
-    // Keyword search (title and description)
+    let filter = {};
+
     if (search && search.trim()) {
-      const q = search.trim().toLowerCase();
-      tasks = tasks.filter(t => 
-        (t.title && t.title.toLowerCase().includes(q)) || 
-        (t.description && t.description.toLowerCase().includes(q))
-      );
+      const q = search.trim();
+      filter.$or = [
+        { title: { $regex: q, $options: 'i' } },
+        { description: { $regex: q, $options: 'i' } }
+      ];
     }
 
-    // Bounty range
     if (minBounty && !isNaN(Number(minBounty))) {
-      tasks = tasks.filter(t => Number(t.bounty) >= Number(minBounty));
+      filter.bounty = { ...filter.bounty, $gte: Number(minBounty) };
     }
     if (maxBounty && !isNaN(Number(maxBounty))) {
-      tasks = tasks.filter(t => Number(t.bounty) <= Number(maxBounty));
+      filter.bounty = { ...filter.bounty, $lte: Number(maxBounty) };
     }
 
-    // Deadline hours
     if (deadline && !isNaN(Number(deadline))) {
-      tasks = tasks.filter(t => Number(t.deadlineHours || 2) <= Number(deadline));
+      filter.deadlineHours = { ...filter.deadlineHours, $lte: Number(deadline) };
     }
 
-    // Status filter
     if (status && status !== 'all') {
       const statuses = status.split(',').map(s => s.trim().toLowerCase());
-      tasks = tasks.filter(t => statuses.includes(t.status.toLowerCase()));
+      filter.status = { $in: statuses };
     }
 
-    // Type filter (posted / claimed / all)
     if (type && userId) {
       if (type === 'posted') {
-        tasks = tasks.filter(t => String(t.postedBy) === String(userId));
+        filter.postedBy = userId;
       } else if (type === 'claimed') {
-        tasks = tasks.filter(t => String(t.claimedBy) === String(userId));
+        filter.claimedBy = userId;
       }
     }
 
-    // Sorting
+    let sortObj = { createdAt: -1 };
     if (sort === 'oldest') {
-      tasks.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+      sortObj = { createdAt: 1 };
     } else if (sort === 'highest-bounty' || sort === 'highest') {
-      tasks.sort((a, b) => Number(b.bounty) - Number(a.bounty));
+      sortObj = { bounty: -1 };
     } else if (sort === 'lowest-bounty' || sort === 'lowest') {
-      tasks.sort((a, b) => Number(a.bounty) - Number(b.bounty));
+      sortObj = { bounty: 1 };
     } else if (sort === 'most-time') {
-      tasks.sort((a, b) => (Number(b.deadlineHours) || 0) - (Number(a.deadlineHours) || 0));
+      sortObj = { deadlineHours: -1 };
     } else if (sort === 'least-time') {
-      tasks.sort((a, b) => (Number(a.deadlineHours) || 0) - (Number(b.deadlineHours) || 0));
-    } else {
-      // Default: newest first
-      tasks.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      sortObj = { deadlineHours: 1 };
     }
+
+    const tasks = await Task.find(filter).sort(sortObj);
+    const enrichedTasksPromises = tasks.map(t => enrichTask(t));
+    const enrichedTasks = await Promise.all(enrichedTasksPromises);
 
     res.status(200).json({
       success: true,
-      count: tasks.length,
-      tasks,
+      count: enrichedTasks.length,
+      tasks: enrichedTasks,
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -913,5 +552,5 @@ module.exports = {
   autoResolveGhosting,
   deleteTask,
   rejectTask,
-  searchTasks,
+  searchTasks
 };

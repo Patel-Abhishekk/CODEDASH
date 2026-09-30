@@ -1,65 +1,66 @@
-const { readDB, writeDB } = require('../config/db');
+const User = require('../models/User');
+const Notification = require('../models/Notification');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { DEFAULT_WALLET_BALANCE } = require('../constants');
 const { validateUsername, validateEmail, validatePassword } = require('../utils/validation');
-const { AppError, handleError } = require('../utils/errorHandler');
-const logger = require('../utils/logger');
 
-// Register a new user
 const registerUser = async (req, res) => {
   try {
     const { username, email, password } = req.body;
+    
+    // Validate
+    if (!username || !email || !password) {
+      return res.status(400).json({ message: 'Missing required fields' });
+    }
 
     if (!validateUsername(username)) {
-      throw new AppError('Invalid username format', 400);
+      return res.status(400).json({ message: 'Invalid username format' });
     }
     
     if (!validateEmail(email)) {
-      throw new AppError('Invalid email format', 400);
+      return res.status(400).json({ message: 'Invalid email format' });
     }
     
     if (!validatePassword(password)) {
-      throw new AppError('Password not strong enough', 400);
+      return res.status(400).json({ message: 'Password not strong enough' });
     }
 
-    const db = readDB();
-
-    const emailExists = db.users.find(u => u.email === email);
-    if (emailExists) {
-      throw new AppError('Email already registered', 400);
+    // Check if email exists
+    let user = await User.findOne({ email });
+    if (user) {
+      return res.status(400).json({ message: 'Email already registered' });
     }
 
-    const usernameExists = db.users.find(u => u.username === username);
-    if (usernameExists) {
-      throw new AppError('Username already taken', 400);
+    // Check if username exists
+    user = await User.findOne({ username });
+    if (user) {
+      return res.status(400).json({ message: 'Username already taken' });
     }
 
+    // Hash password
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
 
-    const newUser = {
+    // Create user
+    const newUser = new User({
       id: Date.now().toString(),
       username,
       email,
       passwordHash,
-      walletBalance: DEFAULT_WALLET_BALANCE,
+      walletBalance: 1000,
       escrowHeld: 0,
       engineerScore: {
         averageRating: 0,
         totalRatings: 0,
-        bugsSolved: 0,
+        bugsSolved: 0
       },
       tasksPosted: [],
       tasksClaimed: [],
-      tasksCompleted: [],
-      createdAt: new Date(),
-    };
+      tasksCompleted: []
+    });
 
-    db.users.push(newUser);
-    writeDB(db);
-    
-    logger.info('User registered', { userId: newUser.id, username });
+    await newUser.save();
+    console.log(`✅ User registered: ${email}`);
 
     res.status(201).json({
       message: 'User registered successfully',
@@ -72,53 +73,45 @@ const registerUser = async (req, res) => {
         engineerScore: newUser.engineerScore,
         tasksPosted: newUser.tasksPosted,
         tasksClaimed: newUser.tasksClaimed,
-        tasksCompleted: newUser.tasksCompleted,
-      },
+        tasksCompleted: newUser.tasksCompleted
+      }
     });
   } catch (error) {
-    logger.error('Registration failed', { error: error.message });
-    handleError(error, res);
+    console.error('Register error:', error);
+    res.status(500).json({ message: error.message });
   }
 };
 
-// Login user
 const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
-    
-    logger.info('Login attempt', { email });
 
-    const db = readDB();
-
-    // With manual index this could be faster, but leaving linear search if not indexed yet
-    let user;
-    if (db.usersByEmail) {
-      const userId = db.usersByEmail[email];
-      user = db.users.find(u => u.id === userId);
-    } else {
-      user = db.users.find(u => u.email === email);
+    if (!email || !password) {
+      return res.status(400).json({ message: 'Email and password required' });
     }
-    
+
+    // Find user
+    const user = await User.findOne({ email });
     if (!user) {
-      throw new AppError('User not found', 400);
+      return res.status(400).json({ message: 'Email or password incorrect' });
     }
 
-    const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
-    if (!isPasswordValid) {
-      throw new AppError('Invalid password', 400);
+    // Check password
+    const passwordMatch = await bcrypt.compare(password, user.passwordHash);
+    if (!passwordMatch) {
+      return res.status(400).json({ message: 'Email or password incorrect' });
     }
 
+    // Generate token
     const token = jwt.sign(
-      { id: user.id, email: user.email },
-      process.env.JWT_SECRET || 'secret',
+      { userId: user.id, email: user.email },
+      process.env.JWT_SECRET || 'secret-key',
       { expiresIn: '7d' }
     );
-    
-    logger.info('Login successful', { userId: user.id });
+    console.log(`✅ User logged in: ${email}`);
 
-    res.status(200).json({
+    res.json({
       message: 'Login successful',
-      token,
       user: {
         id: user.id,
         username: user.username,
@@ -128,83 +121,69 @@ const loginUser = async (req, res) => {
         engineerScore: user.engineerScore,
         tasksPosted: user.tasksPosted,
         tasksClaimed: user.tasksClaimed,
-        tasksCompleted: user.tasksCompleted,
+        tasksCompleted: user.tasksCompleted
       },
+      token
     });
   } catch (error) {
-    logger.error('Login failed', { email: req.body.email, error: error.message });
-    handleError(error, res);
+    console.error('Login error:', error);
+    res.status(500).json({ message: error.message });
   }
 };
 
-// Get user profile by ID
 const getUserById = async (req, res) => {
   try {
     const { userId } = req.params;
-    const db = readDB();
-
-    const user = db.users.find(u => u.id === userId);
+    const user = await User.findOne({ id: userId });
+    
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
-
-    const { passwordHash, ...userWithoutPassword } = user;
+    
     res.status(200).json({
       message: 'User fetched successfully',
-      user: userWithoutPassword,
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        walletBalance: user.walletBalance,
+        escrowHeld: user.escrowHeld,
+        engineerScore: user.engineerScore,
+        tasksPosted: user.tasksPosted,
+        tasksClaimed: user.tasksClaimed,
+        tasksCompleted: user.tasksCompleted
+      }
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-// Get user notifications by ID
 const getUserNotifications = async (req, res) => {
   try {
     const { userId } = req.params;
-    const db = readDB();
-
-    const user = db.users.find(u => u.id === userId);
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    const notifications = user.notifications || [];
+    const notifications = await Notification.find({ userId }).sort({ createdAt: -1 });
+    
     res.status(200).json({
       message: 'Notifications fetched successfully',
-      notifications: [...notifications].reverse(), // newest first
+      notifications: notifications
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-// Mark notifications as read
 const markNotificationsRead = async (req, res) => {
   try {
     const { userId } = req.body;
-    const db = readDB();
-
-    const userIndex = db.users.findIndex(u => u.id === userId);
-    if (userIndex === -1) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    const user = db.users[userIndex];
-    if (user.notifications) {
-      user.notifications.forEach(n => {
-        n.read = true;
-      });
-    }
-
-    db.users[userIndex] = user;
-    writeDB(db);
-
+    await Notification.updateMany({ userId, read: false }, { read: true });
+    
     res.status(200).json({ message: 'Notifications marked as read' });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-module.exports = { registerUser, loginUser, getUserById, getUserNotifications, markNotificationsRead };
-
+// Also exported register and login so routes that expect them will work, if renamed.
+// The original used registerUser and loginUser, the task requested register and login, I will export both mapping to be safe
+module.exports = { registerUser, loginUser, getUserById, getUserNotifications, markNotificationsRead, register: registerUser, login: loginUser };
