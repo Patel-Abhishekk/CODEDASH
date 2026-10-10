@@ -3,7 +3,6 @@ import LandingNavbar from '../components/LandingNavbar';
 import HeroSection from '../components/HeroSection';
 import FeaturesSection from '../components/FeaturesSection';
 import HowItWorks from '../components/HowItWorks';
-import StatsSection from '../components/StatsSection';
 import CTASection from '../components/CTASection';
 import '../styles/Landing.css';
 
@@ -16,7 +15,6 @@ export default function Landing() {
         <HeroSection />
         <FeaturesSection />
         <HowItWorks />
-        <StatsSection />
         <CTASection />
       </main>
 
@@ -25,8 +23,8 @@ export default function Landing() {
           <div className="footer-links">
             <a href="#about">About</a>
             <a href="#contact">Contact</a>
-            <a href="#privacy">Privacy</a>
-            <a href="#terms">Terms</a>
+            <a href="/privacy">Privacy</a>
+            <a href="/terms">Terms</a>
           </div>
           <div className="footer-copyright">
             © 2026 CodeDash. All rights reserved.

@@ -3,22 +3,18 @@ import React from 'react';
 export default function FeaturesSection() {
   const features = [
     {
-      icon: '📝',
       title: 'Post Tasks with Bounty',
       description: 'Set your own bounty and find solvers instantly'
     },
     {
-      icon: '💬',
       title: 'Real-time Chat',
       description: 'Communicate with solvers in real-time'
     },
     {
-      icon: '💰',
       title: 'Instant Payouts',
       description: 'Get paid instantly after task completion'
     },
     {
-      icon: '⭐',
       title: 'Community Ratings',
       description: 'Build reputation with ratings and reviews'
     }
@@ -34,7 +30,6 @@ export default function FeaturesSection() {
       <div className="features-grid">
         {features.map((feature, index) => (
           <div key={index} className="feature-card">
-            <div className="feature-icon">{feature.icon}</div>
             <h3>{feature.title}</h3>
             <p>{feature.description}</p>
           </div>

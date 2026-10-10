@@ -16,6 +16,8 @@ import ApproveTask from './pages/ApproveTask';
 import UserProfile from './pages/UserProfile';
 import TaskHistory from './pages/TaskHistory';
 import Messages from './pages/Messages';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import TermsConditions from './pages/TermsConditions';
 import './App.css';
 import ErrorBoundary from './components/ErrorBoundary';
 
@@ -57,6 +59,8 @@ function AppRoutes() {
         <Route path="/messages" element={user ? <Messages /> : <Navigate to="/login" replace />} />
 
         {/* Catch all */}
+        <Route path="/privacy" element={<PrivacyPolicy />} />
+        <Route path="/terms" element={<TermsConditions />} />
         <Route path="*" element={<Navigate to={user ? "/dashboard" : "/"} replace />} />
       </Routes>
     </Router>

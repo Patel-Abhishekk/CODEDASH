@@ -5,9 +5,9 @@ export default function HeroSection() {
   return (
     <section className="hero-section">
       <div className="hero-content">
-        <h1>CodeDash</h1>
-        <h2>Peer-to-Peer Micro-Task Platform</h2>
-        <p>Connect with task posters, solve problems, earn money. Fast. Reliable. Transparent.</p>
+        <h1>CodeDash Task Platform</h1>
+        <h2>A Direct Peer-to-Peer Micro-Task Platform</h2>
+        <p>A transparent marketplace where clients post coding tasks with bounties, and developers complete them for instant payouts.</p>
         <div className="hero-actions">
           <Link to="/register" className="btn-primary">Start Now</Link>
           <a href="#features" className="btn-outline">Learn More</a>
