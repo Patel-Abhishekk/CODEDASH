@@ -4,33 +4,33 @@ export default function HowItWorks() {
   const steps = [
     {
       number: '1',
-      title: 'Post',
-      description: 'Create task with details and bounty'
+      title: 'Post a task',
+      description: 'Describe the bug or feature, set a bounty in rupees, and choose a deadline.'
     },
     {
       number: '2',
-      title: 'Claim',
-      description: 'Others claim and get assigned'
+      title: 'A developer claims it',
+      description: 'Developers browse open tasks and claim the ones they can solve. Your bounty is held in escrow.'
     },
     {
       number: '3',
-      title: 'Solve',
-      description: 'Work and submit proof'
+      title: 'Work gets submitted',
+      description: 'The solver completes the task and uploads proof of their work for your review.'
     },
     {
       number: '4',
-      title: 'Earn',
-      description: 'Get approved and paid instantly'
+      title: 'You approve and pay',
+      description: 'Review the submission, approve it, and the bounty is released to the solver instantly.'
     }
   ];
 
   return (
     <section id="how-it-works" className="how-it-works-section">
       <div className="section-header">
-        <h2>How It Works</h2>
-        <p>Four simple steps to get things done</p>
+        <h2>Four steps, start to finish</h2>
+        <p>No negotiation, no scope creep. The process is the same every time.</p>
       </div>
-      
+
       <div className="steps-container">
         {steps.map((step, index) => (
           <div key={index} className="step-card">

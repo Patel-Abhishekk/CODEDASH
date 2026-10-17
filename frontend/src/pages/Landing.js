@@ -20,14 +20,19 @@ export default function Landing() {
 
       <footer className="footer">
         <div className="footer-content">
-          <div className="footer-links">
-            <a href="#about">About</a>
-            <a href="#contact">Contact</a>
-            <a href="/privacy">Privacy</a>
-            <a href="/terms">Terms</a>
+          <div className="footer-left">
+            <h3><span className="text-accent">Code</span>Dash</h3>
+            <p>A peer-to-peer coding task marketplace.</p>
           </div>
-          <div className="footer-copyright">
-            © 2026 CodeDash. All rights reserved.
+          <div className="footer-right">
+            <div className="footer-links">
+              <a href="/privacy">Privacy</a>
+              <a href="/terms">Terms</a>
+              <a href="mailto:support@codedash.dev">Contact</a>
+            </div>
+            <div className="footer-copyright">
+              &copy; 2026 CodeDash
+            </div>
           </div>
         </div>
       </footer>

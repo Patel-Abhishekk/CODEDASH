@@ -5,13 +5,13 @@ export default function CTASection() {
   return (
     <section className="cta-section">
       <div className="cta-content">
-        <h2>Ready to start earning?</h2>
-        <p>Join CodeDash and connect with opportunities</p>
+        <h2>Start posting or solving tasks today</h2>
+        <p>Create a free account. Post your first task or browse what needs solving.</p>
         <div className="cta-actions">
-          <Link to="/register" className="btn-primary btn-large">Sign Up Now</Link>
+          <Link to="/register" className="btn-primary btn-large">Create Account</Link>
           <div className="cta-secondary">
             <span>Already have an account? </span>
-            <Link to="/login" className="link-text">Sign In</Link>
+            <Link to="/login" className="link-text">Sign in</Link>
           </div>
         </div>
       </div>
