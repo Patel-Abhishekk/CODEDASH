@@ -8,7 +8,7 @@
       "walletBalance": 150,
       "escrowHeld": -200,
       "engineerScore": {
-        "averageRating": 0,
+        "averageRating": 1,
         "totalRatings": 0,
         "bugsSolved": 0
       },
@@ -61,7 +61,7 @@
       "walletBalance": 1000,
       "escrowHeld": 100,
       "engineerScore": {
-        "averageRating": 3,
+        "averageRating": 4,
         "totalRatings": 1,
         "bugsSolved": 1
       },
