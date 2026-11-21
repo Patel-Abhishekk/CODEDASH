@@ -1,5 +1,6 @@
 const Task = require('../models/Task');
 const User = require('../models/User');
+const { v4: uuidv4 } = require('uuid');
 const { createNotification } = require('./notificationController');
 
 const postTask = async (req, res) => {
@@ -24,7 +25,7 @@ const postTask = async (req, res) => {
     }
 
     const newTask = new Task({
-      id: Date.now().toString(),
+      id: uuidv4(),
       title,
       description,
       bounty,

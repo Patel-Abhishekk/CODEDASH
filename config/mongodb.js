@@ -24,10 +24,9 @@ const connectDB = async () => {
     console.error(`  Error: ${error.message}\n`);
     console.log('📝 Troubleshooting:');
     console.log('  1. Check MONGODB_URI in .env file');
-    console.log('  2. Check username: ap8677254_db_user');
-    console.log('  3. Check password: codedashpass');
-    console.log('  4. Check IP whitelist in Atlas (should be 0.0.0.0/0)');
-    console.log('  5. Check internet connection\n');
+    console.log('  2. Check your Atlas username and password');
+    console.log('  3. Check IP whitelist in Atlas (should be 0.0.0.0/0)');
+    console.log('  4. Check internet connection\n');
     process.exit(1);
   }
 };

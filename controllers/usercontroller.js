@@ -2,6 +2,7 @@ const User = require('../models/User');
 const Notification = require('../models/Notification');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const { v4: uuidv4 } = require('uuid');
 const { validateUsername, validateEmail, validatePassword } = require('../utils/validation');
 
 const registerUser = async (req, res) => {
@@ -43,7 +44,7 @@ const registerUser = async (req, res) => {
 
     // Create user
     const newUser = new User({
-      id: Date.now().toString(),
+      id: uuidv4(),
       username,
       email,
       passwordHash,

@@ -1,34 +1,22 @@
 const express = require('express');
 const router = express.Router();
+const authMiddleware = require('../middleware/auth');
 const { postTask, getOpenTasks, getTaskById, claimTask, submitProof, approveTask, checkAndResolveGhosting, autoResolveGhosting, deleteTask, rejectTask, searchTasks } = require('../controllers/taskController');
 const { validateTaskInput, validateProofInput } = require('../middleware/validation');
 
-router.post('/', validateTaskInput, postTask);
-
-// GET /api/tasks - Get all open tasks (feed)
+// Public routes (browsing tasks)
 router.get('/', getOpenTasks);
-
-// GET /api/tasks/search - Search, filter, and sort tasks
 router.get('/search', searchTasks);
-
-// GET /api/tasks/:taskId - Get task by ID
 router.get('/:taskId', getTaskById);
 
-// POST /api/tasks/claim - Claim a task
-router.post('/claim', claimTask);
-
-// POST /api/tasks/delete - Delete an open task
-router.post('/delete', deleteTask);
-
-// POST /api/tasks/submit-proof - Submit proof of work
-router.post('/submit-proof', validateProofInput, submitProof);
-// POST /api/tasks/approve - Approve task and give rating
-router.post('/approve', approveTask);
-// POST /api/tasks/reject - Reject proof and request revision
-router.post('/reject', rejectTask);
-// POST /api/tasks/check-ghosting - Check and resolve 48-hour ghosting
-router.post('/check-ghosting', checkAndResolveGhosting);
-// POST /api/tasks/auto-resolve-ghosting - Auto-resolve abandoned tasks
-router.post('/auto-resolve-ghosting', autoResolveGhosting);
+// Protected routes (require authentication)
+router.post('/', authMiddleware, validateTaskInput, postTask);
+router.post('/claim', authMiddleware, claimTask);
+router.post('/delete', authMiddleware, deleteTask);
+router.post('/submit-proof', authMiddleware, validateProofInput, submitProof);
+router.post('/approve', authMiddleware, approveTask);
+router.post('/reject', authMiddleware, rejectTask);
+router.post('/check-ghosting', authMiddleware, checkAndResolveGhosting);
+router.post('/auto-resolve-ghosting', authMiddleware, autoResolveGhosting);
 
 module.exports = router;

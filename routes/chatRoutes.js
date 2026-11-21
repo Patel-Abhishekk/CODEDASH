@@ -1,14 +1,11 @@
 const express = require('express');
 const router = express.Router();
+const authMiddleware = require('../middleware/auth');
 const { getChatHistory, getUserChats, markMessagesRead } = require('../controllers/chatController');
 
-// Get chat history for a task
-router.get('/:taskId', getChatHistory);
-
-// Get list of active chats for a user
-router.get('/user/:userId', getUserChats);
-
-// Mark messages in a task as read
-router.post('/mark-read', markMessagesRead);
+// All chat routes are protected
+router.get('/:taskId', authMiddleware, getChatHistory);
+router.get('/user/:userId', authMiddleware, getUserChats);
+router.post('/mark-read', authMiddleware, markMessagesRead);
 
 module.exports = router;
