@@ -11,31 +11,31 @@ const registerUser = async (req, res) => {
     
     // Validate
     if (!username || !email || !password) {
-      return res.status(400).json({ message: 'Missing required fields' });
+      return res.status(400).json({ success: false, message: 'Missing required fields' });
     }
 
     if (!validateUsername(username)) {
-      return res.status(400).json({ message: 'Invalid username format' });
+      return res.status(400).json({ success: false, message: 'Invalid username format' });
     }
     
     if (!validateEmail(email)) {
-      return res.status(400).json({ message: 'Invalid email format' });
+      return res.status(400).json({ success: false, message: 'Invalid email format' });
     }
     
     if (!validatePassword(password)) {
-      return res.status(400).json({ message: 'Password not strong enough' });
+      return res.status(400).json({ success: false, message: 'Password not strong enough' });
     }
 
     // Check if email exists
     let user = await User.findOne({ email });
     if (user) {
-      return res.status(400).json({ message: 'Email already registered' });
+      return res.status(400).json({ success: false, message: 'Email already registered' });
     }
 
     // Check if username exists
     user = await User.findOne({ username });
     if (user) {
-      return res.status(400).json({ message: 'Username already taken' });
+      return res.status(400).json({ success: false, message: 'Username already taken' });
     }
 
     // Hash password
@@ -64,6 +64,7 @@ const registerUser = async (req, res) => {
     console.log(`✅ User registered: ${email}`);
 
     res.status(201).json({
+      success: true,
       message: 'User registered successfully',
       user: {
         id: newUser.id,
@@ -79,7 +80,7 @@ const registerUser = async (req, res) => {
     });
   } catch (error) {
     console.error('Register error:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -88,19 +89,19 @@ const loginUser = async (req, res) => {
     const { email, password } = req.body;
 
     if (!email || !password) {
-      return res.status(400).json({ message: 'Email and password required' });
+      return res.status(400).json({ success: false, message: 'Email and password required' });
     }
 
     // Find user
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(400).json({ message: 'Email or password incorrect' });
+      return res.status(400).json({ success: false, message: 'Email or password incorrect' });
     }
 
     // Check password
     const passwordMatch = await bcrypt.compare(password, user.passwordHash);
     if (!passwordMatch) {
-      return res.status(400).json({ message: 'Email or password incorrect' });
+      return res.status(400).json({ success: false, message: 'Email or password incorrect' });
     }
 
     // Generate token
@@ -112,6 +113,7 @@ const loginUser = async (req, res) => {
     console.log(`✅ User logged in: ${email}`);
 
     res.json({
+      success: true,
       message: 'Login successful',
       user: {
         id: user.id,
@@ -128,7 +130,7 @@ const loginUser = async (req, res) => {
     });
   } catch (error) {
     console.error('Login error:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -138,10 +140,11 @@ const getUserById = async (req, res) => {
     const user = await User.findOne({ id: userId });
     
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      return res.status(404).json({ success: false, message: 'User not found' });
     }
     
     res.status(200).json({
+      success: true,
       message: 'User fetched successfully',
       user: {
         id: user.id,
@@ -156,7 +159,7 @@ const getUserById = async (req, res) => {
       }
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -166,22 +169,23 @@ const getUserNotifications = async (req, res) => {
     const notifications = await Notification.find({ userId }).sort({ createdAt: -1 });
     
     res.status(200).json({
+      success: true,
       message: 'Notifications fetched successfully',
       notifications: notifications
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
 const markNotificationsRead = async (req, res) => {
   try {
-    const { userId } = req.body;
+    const userId = req.user?.id || req.body.userId;
     await Notification.updateMany({ userId, read: false }, { read: true });
     
-    res.status(200).json({ message: 'Notifications marked as read' });
+    res.status(200).json({ success: true, message: 'Notifications marked as read' });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 

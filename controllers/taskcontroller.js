@@ -5,23 +5,24 @@ const { createNotification } = require('./notificationController');
 
 const postTask = async (req, res) => {
   try {
-    const { title, description, bounty, userId, deadlineHours } = req.body;
+    const { title, description, bounty, deadlineHours } = req.body;
+    const userId = req.user?.id || req.body.userId;
 
     if (!title || !description || !bounty || !userId) {
-      return res.status(400).json({ message: 'Missing required fields' });
+      return res.status(400).json({ success: false, message: 'Missing required fields' });
     }
     
     if (bounty < 100 || bounty > 100000) {
-      return res.status(400).json({ message: 'Bounty must be ₹100-₹100,000' });
+      return res.status(400).json({ success: false, message: 'Bounty must be ₹100-₹100,000' });
     }
 
     const user = await User.findOne({ id: userId });
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      return res.status(404).json({ success: false, message: 'User not found' });
     }
 
     if (user.walletBalance < bounty) {
-      return res.status(400).json({ message: 'Insufficient wallet balance' });
+      return res.status(400).json({ success: false, message: 'Insufficient wallet balance' });
     }
 
     const newTask = new Task({
@@ -42,25 +43,40 @@ const postTask = async (req, res) => {
     await user.save();
 
     console.log(`✅ Task posted: ${title} by ${userId}`);
-    res.status(201).json({ message: 'Task posted successfully', task: newTask });
+    res.status(201).json({ success: true, message: 'Task posted successfully', task: newTask });
   } catch (error) {
     console.error('Post task error:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ success: false, message: error.message });
   }
+};
+
+const enrichTasksBatch = async (tasks) => {
+  if (!tasks || tasks.length === 0) return [];
+
+  const userIds = new Set();
+  tasks.forEach((t) => {
+    if (t.postedBy) userIds.add(t.postedBy);
+    if (t.claimedBy) userIds.add(t.claimedBy);
+  });
+
+  const users = await User.find({ id: { $in: Array.from(userIds) } }, 'id username');
+  const userMap = new Map();
+  users.forEach((u) => userMap.set(u.id, u.username));
+
+  return tasks.map((task) => {
+    const taskObj = typeof task.toObject === 'function' ? task.toObject() : task;
+    return {
+      ...taskObj,
+      postedByUsername: userMap.get(task.postedBy) || 'Unknown',
+      claimedByUsername: task.claimedBy ? (userMap.get(task.claimedBy) || null) : null,
+    };
+  });
 };
 
 const enrichTask = async (task) => {
   if (!task) return task;
-  const taskObj = typeof task.toObject === 'function' ? task.toObject() : task;
-  
-  const poster = await User.findOne({ id: task.postedBy });
-  const solver = task.claimedBy ? await User.findOne({ id: task.claimedBy }) : null;
-  
-  return {
-    ...taskObj,
-    postedByUsername: poster ? poster.username : 'Unknown',
-    claimedByUsername: solver ? solver.username : null,
-  };
+  const [enriched] = await enrichTasksBatch([task]);
+  return enriched;
 };
 
 const getOpenTasks = async (req, res) => {
@@ -71,13 +87,12 @@ const getOpenTasks = async (req, res) => {
 
     const tasks = await Task.find({ status: 'open' }).sort({ createdAt: -1 }).skip(skip).limit(limit);
     const total = await Task.countDocuments({ status: 'open' });
-    
-    const enrichedTasksPromises = tasks.map(t => enrichTask(t));
-    const enrichedTasks = await Promise.all(enrichedTasksPromises);
 
-    console.log(`✅ Retrieved ${tasks.length} open tasks`);
-    res.json({ 
-      message: 'Open tasks fetched', 
+    const enrichedTasks = await enrichTasksBatch(tasks);
+
+    res.json({
+      success: true,
+      message: 'Open tasks fetched',
       tasks: enrichedTasks,
       total,
       page,
@@ -85,46 +100,47 @@ const getOpenTasks = async (req, res) => {
     });
   } catch (error) {
     console.error('Get tasks error:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
 const getTaskById = async (req, res) => {
   try {
-    const { taskId } = req.params;
+    const taskId = req.params.taskId || req.body?.taskId;
     const task = await Task.findOne({ id: taskId });
-    
+
     if (!task) {
-      return res.status(404).json({ message: 'Task not found' });
+      return res.status(404).json({ success: false, message: 'Task not found' });
     }
-    
+
     const enrichedTask = await enrichTask(task);
-    res.json({ message: 'Task fetched', task: enrichedTask });
+    res.json({ success: true, message: 'Task fetched', task: enrichedTask });
   } catch (error) {
     console.error('Get task error:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
 const claimTask = async (req, res) => {
   try {
-    const { taskId, userId } = req.body;
+    const taskId = req.params.taskId || req.body.taskId;
+    const userId = req.user?.id || req.body.userId;
 
     if (!taskId || !userId) {
-      return res.status(400).json({ message: 'Missing required fields' });
+      return res.status(400).json({ success: false, message: 'Missing required fields' });
     }
 
     const task = await Task.findOne({ id: taskId });
     if (!task) {
-      return res.status(404).json({ message: 'Task not found' });
+      return res.status(404).json({ success: false, message: 'Task not found' });
     }
 
     if (task.status !== 'open') {
-      return res.status(400).json({ message: 'Task already claimed' });
+      return res.status(400).json({ success: false, message: 'Task already claimed' });
     }
 
     if (task.postedBy === userId) {
-      return res.status(400).json({ message: 'You cannot claim your own task' });
+      return res.status(400).json({ success: false, message: 'You cannot claim your own task' });
     }
 
     task.status = 'claimed';
@@ -153,37 +169,40 @@ const claimTask = async (req, res) => {
     );
 
     console.log(`✅ Task claimed: ${taskId} by ${userId}`);
-    res.json({ 
-      message: 'Task claimed successfully', 
+    res.json({
+      success: true,
+      message: 'Task claimed successfully',
       task,
       claimedAt: task.claimedAt,
       claimDeadline: task.claimDeadline
     });
   } catch (error) {
     console.error('Claim task error:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
 const submitProof = async (req, res) => {
   try {
-    const { taskId, userId, proofOfWork } = req.body;
+    const taskId = req.params.taskId || req.body.taskId;
+    const userId = req.user?.id || req.body.userId;
+    const { proofOfWork } = req.body;
 
     if (!taskId || !userId || !proofOfWork) {
-      return res.status(400).json({ message: 'Missing required fields' });
+      return res.status(400).json({ success: false, message: 'Missing required fields' });
     }
 
     const task = await Task.findOne({ id: taskId });
     if (!task) {
-      return res.status(404).json({ message: 'Task not found' });
+      return res.status(404).json({ success: false, message: 'Task not found' });
     }
 
     if (task.status !== 'claimed') {
-      return res.status(400).json({ message: 'Task must be in claimed status' });
+      return res.status(400).json({ success: false, message: 'Task must be in claimed status' });
     }
 
     if (task.claimedBy !== userId) {
-      return res.status(400).json({ message: 'Only the claimer can submit proof' });
+      return res.status(400).json({ success: false, message: 'Only the claimer can submit proof' });
     }
 
     if (new Date() > task.claimDeadline) {
@@ -192,7 +211,7 @@ const submitProof = async (req, res) => {
       task.claimedAt = null;
       task.claimDeadline = null;
       await task.save();
-      return res.status(400).json({ message: 'Claim deadline has passed. Task reverted to open.' });
+      return res.status(400).json({ success: false, message: 'Claim deadline has passed. Task reverted to open.' });
     }
 
     task.proofOfWork = proofOfWork;
@@ -216,38 +235,41 @@ const submitProof = async (req, res) => {
     );
 
     res.status(200).json({
+      success: true,
       message: 'Proof of work submitted successfully',
       task,
       submittedAt: task.submittedAt,
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
 const approveTask = async (req, res) => {
   try {
-    const { taskId, userId, rating } = req.body;
+    const taskId = req.params.taskId || req.body.taskId;
+    const userId = req.user?.id || req.body.userId;
+    const rating = Number(req.body.rating);
 
     if (!taskId || !userId || !rating) {
-      return res.status(400).json({ message: 'Missing required fields' });
+      return res.status(400).json({ success: false, message: 'Missing required fields' });
     }
 
     if (rating < 1 || rating > 5) {
-      return res.status(400).json({ message: 'Rating must be between 1 and 5' });
+      return res.status(400).json({ success: false, message: 'Rating must be between 1 and 5' });
     }
 
     const task = await Task.findOne({ id: taskId });
     if (!task) {
-      return res.status(404).json({ message: 'Task not found' });
+      return res.status(404).json({ success: false, message: 'Task not found' });
     }
 
     if (task.status !== 'under-review') {
-      return res.status(400).json({ message: 'Task must be under review to approve' });
+      return res.status(400).json({ success: false, message: 'Task must be under review to approve' });
     }
 
     if (task.postedBy !== userId) {
-      return res.status(400).json({ message: 'Only the poster can approve this task' });
+      return res.status(400).json({ success: false, message: 'Only the poster can approve this task' });
     }
 
     task.status = 'approved';
@@ -258,10 +280,10 @@ const approveTask = async (req, res) => {
     await task.save();
 
     const solver = await User.findOne({ id: task.claimedBy });
-    if (!solver) return res.status(404).json({ message: 'Solver not found' });
+    if (!solver) return res.status(404).json({ success: false, message: 'Solver not found' });
 
     const poster = await User.findOne({ id: task.postedBy });
-    if (!poster) return res.status(404).json({ message: 'Poster not found' });
+    if (!poster) return res.status(404).json({ success: false, message: 'Poster not found' });
 
     solver.walletBalance += task.bounty;
     solver.tasksCompleted.push(taskId);
@@ -293,12 +315,13 @@ const approveTask = async (req, res) => {
     );
 
     res.status(200).json({
+      success: true,
       message: 'Task approved successfully',
       task,
       solverScore: solver.engineerScore,
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -400,25 +423,26 @@ const autoResolveGhosting = async (req, res) => {
 
 const deleteTask = async (req, res) => {
   try {
-    const { taskId, userId } = req.body;
+    const taskId = req.params.taskId || req.body.taskId;
+    const userId = req.user?.id || req.body.userId;
 
     if (!taskId || !userId) {
-      return res.status(400).json({ message: 'Missing required fields' });
+      return res.status(400).json({ success: false, message: 'Missing required fields' });
     }
 
     const task = await Task.findOne({ id: taskId });
-    if (!task) return res.status(400).json({ message: 'Task not found' });
+    if (!task) return res.status(404).json({ success: false, message: 'Task not found' });
     
     if (task.postedBy !== userId) {
-      return res.status(400).json({ message: 'Only the task poster can delete this task' });
+      return res.status(403).json({ success: false, message: 'Only the task poster can delete this task' });
     }
 
     if (task.status !== 'open') {
-      return res.status(400).json({ message: 'Only open tasks can be deleted' });
+      return res.status(400).json({ success: false, message: 'Only open tasks can be deleted' });
     }
 
     const user = await User.findOne({ id: userId });
-    if (!user) return res.status(400).json({ message: 'User not found' });
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
 
     user.walletBalance += task.bounty;
     user.escrowHeld -= task.bounty;
@@ -428,35 +452,38 @@ const deleteTask = async (req, res) => {
     await Task.deleteOne({ id: taskId });
 
     res.status(200).json({
+      success: true,
       message: 'Task deleted successfully',
       user,
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
 const rejectTask = async (req, res) => {
   try {
-    const { taskId, userId, rejectionReason } = req.body;
+    const taskId = req.params.taskId || req.body.taskId;
+    const userId = req.user?.id || req.body.userId;
+    const { rejectionReason } = req.body;
 
     if (!taskId || !userId || !rejectionReason) {
-      return res.status(400).json({ message: 'Missing required fields' });
+      return res.status(400).json({ success: false, message: 'Missing required fields' });
     }
 
     if (typeof rejectionReason !== 'string' || rejectionReason.trim().length < 10) {
-      return res.status(400).json({ message: 'Rejection reason must be at least 10 characters' });
+      return res.status(400).json({ success: false, message: 'Rejection reason must be at least 10 characters' });
     }
 
     const task = await Task.findOne({ id: taskId });
-    if (!task) return res.status(400).json({ message: 'Task not found' });
+    if (!task) return res.status(404).json({ success: false, message: 'Task not found' });
     
     if (task.postedBy !== userId) {
-      return res.status(400).json({ message: 'Only the poster can reject this task' });
+      return res.status(403).json({ success: false, message: 'Only the poster can reject this task' });
     }
 
     if (task.status !== 'under-review') {
-      return res.status(400).json({ message: 'Task must be under-review to reject' });
+      return res.status(400).json({ success: false, message: 'Task must be under-review to reject' });
     }
 
     task.status = 'claimed';
@@ -469,11 +496,12 @@ const rejectTask = async (req, res) => {
     await task.save();
 
     res.status(200).json({
+      success: true,
       message: 'Task proof rejected. Reverted to claimed status.',
       task,
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -528,13 +556,20 @@ const searchTasks = async (req, res) => {
       sortObj = { deadlineHours: 1 };
     }
 
-    const tasks = await Task.find(filter).sort(sortObj);
-    const enrichedTasksPromises = tasks.map(t => enrichTask(t));
-    const enrichedTasks = await Promise.all(enrichedTasksPromises);
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const skip = (page - 1) * limit;
+
+    const total = await Task.countDocuments(filter);
+    const tasks = await Task.find(filter).sort(sortObj).skip(skip).limit(limit);
+    const enrichedTasks = await enrichTasksBatch(tasks);
 
     res.status(200).json({
       success: true,
       count: enrichedTasks.length,
+      total,
+      page,
+      pages: Math.ceil(total / limit),
       tasks: enrichedTasks,
     });
   } catch (error) {

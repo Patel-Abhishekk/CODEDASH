@@ -39,20 +39,21 @@ const validateChatAccess = async (taskId, userId) => {
 const getChatHistory = async (req, res) => {
   try {
     const { taskId } = req.params;
-    const { userId } = req.query;
+    const userId = req.user?.id || req.query.userId;
 
     if (!taskId || !userId) {
-      return res.status(400).json({ message: 'Missing taskId or userId' });
+      return res.status(400).json({ success: false, message: 'Missing taskId or userId' });
     }
 
     const access = await validateChatAccess(taskId, userId);
     if (!access.valid) {
-      return res.status(403).json({ message: access.message });
+      return res.status(403).json({ success: false, message: access.message });
     }
 
     const chats = await Chat.find({ taskId }).sort({ createdAt: 1 });
 
     res.status(200).json({
+      success: true,
       message: 'Chat history fetched',
       task: {
         id: access.task.id,
@@ -66,7 +67,7 @@ const getChatHistory = async (req, res) => {
       chats,
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -98,9 +99,9 @@ const saveChatMessage = async (taskId, senderId, messageText) => {
 
 const getUserChats = async (req, res) => {
   try {
-    const { userId } = req.params;
+    const userId = req.user?.id || req.params.userId;
     if (!userId) {
-      return res.status(400).json({ message: 'User ID is required' });
+      return res.status(400).json({ success: false, message: 'User ID is required' });
     }
 
     const allowedStatuses = ['claimed', 'under-review', 'approved'];
@@ -135,26 +136,28 @@ const getUserChats = async (req, res) => {
     chatsList.sort((a, b) => new Date(b.lastTimestamp) - new Date(a.lastTimestamp));
 
     res.status(200).json({
+      success: true,
       message: 'Active chats fetched',
       chats: chatsList,
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
 const markMessagesRead = async (req, res) => {
   try {
-    const { taskId, userId } = req.body;
+    const taskId = req.body.taskId;
+    const userId = req.user?.id || req.body.userId;
     if (!taskId || !userId) {
-      return res.status(400).json({ message: 'Missing taskId or userId' });
+      return res.status(400).json({ success: false, message: 'Missing taskId or userId' });
     }
 
     await Chat.updateMany({ taskId, receiverId: userId, read: false }, { read: true });
 
-    res.status(200).json({ message: 'Messages marked as read' });
+    res.status(200).json({ success: true, message: 'Messages marked as read' });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 

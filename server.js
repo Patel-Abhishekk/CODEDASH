@@ -8,6 +8,7 @@ const path = require('path');
 const os = require('os');
 require('dotenv').config(); // ✅ Load .env variables
 const connectDB = require('./config/mongodb'); // ✅ Import MongoDB connection
+const logger = require('./utils/logger');
 const { setSocketIO } = require('./controllers/notificationController');
 const { saveChatMessage } = require('./controllers/chatController');
 
@@ -132,12 +133,9 @@ app.use((req, res, next) => {
 });
 
 // ═══════════════════════════════════════════════════════════
-// REQUEST LOGGING
+// STRUCTURED REQUEST LOGGING
 // ═══════════════════════════════════════════════════════════
-app.use((req, res, next) => {
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
-  next();
-});
+app.use(logger.requestMiddleware);
 
 // ═══════════════════════════════════════════════════════════
 // HEALTH CHECK
@@ -163,12 +161,12 @@ app.use('/api/notifications', notificationRoutes);
 // ERROR HANDLING
 // ═══════════════════════════════════════════════════════════
 app.use((req, res) => {
-  res.status(404).json({ message: 'Endpoint not found' });
+  res.status(404).json({ success: false, message: 'Endpoint not found' });
 });
 
 app.use((err, req, res, next) => {
-  console.error('Error:', err);
-  res.status(500).json({ message: 'Internal server error' });
+  logger.error('Unhandled request error', err);
+  res.status(500).json({ success: false, message: 'Internal server error' });
 });
 
 // ═══════════════════════════════════════════════════════════

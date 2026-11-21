@@ -6,20 +6,19 @@ class AppError extends Error {
 }
 
 const handleError = (error, res) => {
-  console.error('Error:', {
-    message: error.message,
-    statusCode: error.statusCode || 500,
-    timestamp: new Date()
-  });
-  
   const statusCode = error.statusCode || 500;
   const message = error.message || 'Internal server error';
-  
-  if (statusCode === 500) {
-    return res.status(500).json({ message: 'Internal server error' });
-  }
-  
-  res.status(statusCode).json({ message });
+
+  console.error('Error:', {
+    message,
+    statusCode,
+    timestamp: new Date()
+  });
+
+  return res.status(statusCode).json({
+    success: false,
+    message: statusCode === 500 ? 'Internal server error' : message
+  });
 };
 
 module.exports = { AppError, handleError };

@@ -1,4 +1,5 @@
-import React, { createContext, useState, useEffect } from 'react';
+import React, { createContext, useState, useEffect, useCallback } from 'react';
+import { userAPI } from '../utils/api';
 
 export const AuthContext = createContext();
 
@@ -6,6 +7,26 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // Refresh user data from API to avoid stale balances/scores
+  const refreshUser = useCallback(async (userId) => {
+    const targetId = userId || (user ? user.id : null);
+    if (!targetId) return null;
+
+    try {
+      const response = await userAPI.getUserById(targetId);
+      const freshUser = response.data?.user || response.data;
+      if (freshUser && freshUser.id) {
+        setUser(freshUser);
+        const storage = localStorage.getItem('token') ? localStorage : sessionStorage;
+        storage.setItem('user', JSON.stringify(freshUser));
+        return freshUser;
+      }
+    } catch (error) {
+      console.warn('⚠️ Could not refresh user profile from server:', error.message);
+    }
+    return null;
+  }, [user]);
 
   // Check if user is already logged in (on app load)
   useEffect(() => {
@@ -16,9 +37,27 @@ export const AuthProvider = ({ children }) => {
 
     if (savedToken && savedUser) {
       try {
+        const parsed = JSON.parse(savedUser);
         setToken(savedToken);
-        setUser(JSON.parse(savedUser));
-        console.log('User auto-logged in');
+        setUser(parsed);
+        console.log('User auto-logged in, revalidating profile with server...');
+
+        // Revalidate against the server to get fresh balances and completed tasks
+        if (parsed.id) {
+          userAPI.getUserById(parsed.id)
+            .then(res => {
+              const freshUser = res.data?.user || res.data;
+              if (freshUser && freshUser.id) {
+                setUser(freshUser);
+                const storage = localStorage.getItem('token') ? localStorage : sessionStorage;
+                storage.setItem('user', JSON.stringify(freshUser));
+                console.log('✅ User profile refreshed from server');
+              }
+            })
+            .catch(err => {
+              console.warn('⚠️ Revalidation failed, using cached user data:', err.message);
+            });
+        }
       } catch (error) {
         console.error('Error parsing saved user:', error);
         localStorage.removeItem('token');
@@ -28,7 +67,7 @@ export const AuthProvider = ({ children }) => {
       }
     }
 
-    setLoading(false); // IMPORTANT: Must set loading to false
+    setLoading(false);
   }, []);
 
   // Login function
@@ -51,8 +90,6 @@ export const AuthProvider = ({ children }) => {
     storage.setItem('user', JSON.stringify(userData));
     
     console.log('Login successful, saving to storage');
-    console.log('Token:', authToken);
-    console.log('User:', userData);
   };
 
   // Update user function (updates state + persistence)
@@ -84,8 +121,8 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, login, logout, updateUser, loading }}>
+    <AuthContext.Provider value={{ user, token, login, logout, updateUser, refreshUser, loading }}>
       {children}
     </AuthContext.Provider>
   );
-};
+};

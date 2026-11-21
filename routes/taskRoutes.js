@@ -9,7 +9,14 @@ router.get('/', getOpenTasks);
 router.get('/search', searchTasks);
 router.get('/:taskId', getTaskById);
 
-// Protected routes (require authentication)
+// RESTful routes
+router.delete('/:taskId', authMiddleware, deleteTask);
+router.patch('/:taskId/claim', authMiddleware, claimTask);
+router.patch('/:taskId/approve', authMiddleware, approveTask);
+router.patch('/:taskId/reject', authMiddleware, rejectTask);
+router.post('/:taskId/submit-proof', authMiddleware, validateProofInput, submitProof);
+
+// Action endpoints & backwards-compatibility aliases
 router.post('/', authMiddleware, validateTaskInput, postTask);
 router.post('/claim', authMiddleware, claimTask);
 router.post('/delete', authMiddleware, deleteTask);
