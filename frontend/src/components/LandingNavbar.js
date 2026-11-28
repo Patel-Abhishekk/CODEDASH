@@ -9,17 +9,18 @@ export default function LandingNavbar() {
     <nav className="landing-navbar">
       <div className="navbar-container">
         <div className="navbar-logo" onClick={() => navigate('/')}>
-          <h2><span className="text-accent">Code</span>Dash</h2>
+          <h2><span className="text-gradient">Code</span>Dash</h2>
         </div>
 
         <div className="navbar-links">
           <a href="#features">Features</a>
           <a href="#how-it-works">How It Works</a>
+          <a href="#stats">Stats</a>
         </div>
 
         <div className="navbar-actions">
-          <Link to="/login" className="btn-signin">Sign In</Link>
-          <Link to="/register" className="btn-primary">Get Started</Link>
+          <Link to="/login" className="btn-ghost">Sign In</Link>
+          <Link to="/register" className="btn-primary btn-glow">Get Started <span className="btn-arrow">→</span></Link>
         </div>
       </div>
     </nav>

@@ -1,149 +1,161 @@
-/* Auth Container - Centers the login/register card */
+/* Auth - Dark SaaS Theme */
 .auth-container {
   display: flex;
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-  font-family: 'Inter', 'Poppins', sans-serif;
+  background: var(--bg-page);
+  font-family: var(--font-body);
+  position: relative;
 }
 
-/* Auth Card - The white box with login/register form */
+.auth-container::before {
+  content: '';
+  position: absolute;
+  width: 400px;
+  height: 400px;
+  background: var(--accent-glow);
+  border-radius: 50%;
+  filter: blur(120px);
+  opacity: 0.15;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
 .auth-card {
-  background: white;
+  background: var(--bg-card);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border-color);
   padding: 40px;
-  border-radius: 12px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+  border-radius: var(--radius-card);
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
   width: 100%;
-  max-width: 400px;
+  max-width: 420px;
+  position: relative;
+  z-index: 1;
 }
 
-/* CodeDash Logo */
 .logo {
   font-size: 28px;
   font-weight: 700;
-  color: #2563EB;
+  background: linear-gradient(135deg, var(--accent), var(--accent-secondary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
   margin: 0 0 10px 0;
   text-align: center;
 }
 
-/* Page heading (Login / Create Account) */
 .auth-card h2 {
   font-size: 22px;
-  color: #1F2937;
+  color: var(--text-primary);
   margin-bottom: 30px;
   text-align: center;
   font-weight: 600;
 }
 
-/* Form group (label + input) */
 .form-group {
   margin-bottom: 20px;
 }
 
-/* Labels */
 .form-group label {
   display: block;
   font-size: 14px;
   font-weight: 500;
-  color: #374151;
+  color: var(--text-muted);
   margin-bottom: 8px;
 }
 
-/* Input fields */
 .form-group input {
   width: 100%;
   padding: 12px;
-  border: 1px solid #E5E7EB;
-  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-btn);
   font-size: 14px;
-  font-family: 'Inter', sans-serif;
-  transition: all 0.3s ease;
+  font-family: var(--font-body);
+  background: var(--bg-subtle);
+  color: var(--text-primary);
+  transition: all 0.2s ease;
   box-sizing: border-box;
 }
 
-/* Input focus state */
 .form-group input:focus {
   outline: none;
-  border-color: #2563EB;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow);
 }
 
-/* Primary button (Login / Register) */
-.btn-primary {
+.form-group input::placeholder {
+  color: var(--text-faint);
+}
+
+.form-group input[type="checkbox"] {
+  accent-color: var(--accent);
+}
+
+.auth-card .btn-primary {
   width: 100%;
   padding: 12px;
-  background: #2563EB;
+  background: var(--accent);
   color: white;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-btn);
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
   margin-top: 10px;
 }
 
-/* Button hover state */
-.btn-primary:hover {
-  background: #1D4ED8;
-  transform: translateY(-2px);
-  box-shadow: 0 5px 15px rgba(37, 99, 235, 0.3);
+.auth-card .btn-primary:hover {
+  background: var(--accent-hover);
+  box-shadow: 0 0 24px var(--accent-glow);
 }
 
-/* Button disabled state (while loading) */
-.btn-primary:disabled {
-  background: #9CA3AF;
+.auth-card .btn-primary:disabled {
+  background: var(--text-faint);
   cursor: not-allowed;
-  transform: none;
+  box-shadow: none;
 }
 
-/* Error message */
 .error-message {
-  background: #FEE2E2;
-  border: 1px solid #FCA5A5;
-  color: #DC2626;
+  background: rgba(220, 38, 38, 0.1);
+  border: 1px solid rgba(220, 38, 38, 0.3);
+  color: #FCA5A5;
   padding: 12px;
-  border-radius: 8px;
+  border-radius: var(--radius-btn);
   font-size: 14px;
   margin-bottom: 20px;
   text-align: center;
 }
 
-/* Auth link - "Don't have account? Register here" */
 .auth-link {
   text-align: center;
   font-size: 14px;
-  color: #6B7280;
+  color: var(--text-secondary);
   margin-top: 20px;
 }
 
-/* Links inside auth-link */
 .auth-link a {
-  color: #2563EB;
+  color: var(--accent);
   text-decoration: none;
   font-weight: 600;
-  transition: color 0.3s ease;
+  transition: color 0.2s ease;
 }
 
-/* Link hover */
 .auth-link a:hover {
-  color: #1D4ED8;
   text-decoration: underline;
 }
 
-/* Responsive - Mobile devices */
 @media (max-width: 480px) {
   .auth-card {
     padding: 30px 20px;
     margin: 20px;
   }
 
-  .logo {
-    font-size: 24px;
-  }
-
-  .auth-card h2 {
-    font-size: 18px;
-  }
+  .logo { font-size: 24px; }
+  .auth-card h2 { font-size: 18px; }
 }

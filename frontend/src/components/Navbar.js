@@ -14,7 +14,7 @@ export default function Navbar({ user, onLogout }) {
       {/* Logo on the left */}
       <div className="navbar-left">
         <Link to="/dashboard" className="navbar-logo">
-          CodeDash
+          <span className="text-gradient">Code</span>Dash
         </Link>
       </div>
 
@@ -25,12 +25,12 @@ export default function Navbar({ user, onLogout }) {
         {user?.id ? (
           <Link to={`/profile/${user.id}`} className="user-profile-nav-link">
             <span className="user-name">
-              Welcome, <strong>{user?.username}</strong>!
+              <strong>{user?.username}</strong>
             </span>
           </Link>
         ) : (
           <span className="user-name">
-            Welcome, {user?.username || 'User'}!
+            {user?.username || 'User'}
           </span>
         )}
         

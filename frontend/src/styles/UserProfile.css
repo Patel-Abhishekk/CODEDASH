@@ -1,419 +1,356 @@
-/* User Profile Page Styling */
+/* ============================================
+   UserProfile.css — Dark Theme (CSS Vars)
+   ============================================ */
+
 .user-profile-page {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  background: #F9FAFB;
-  font-family: 'Inter', 'Poppins', sans-serif;
+  background: var(--bg-page, #0A0A0F);
 }
 
-/* User Profile Container - Two Column Grid */
 .user-profile-container {
   display: grid;
   grid-template-columns: 1fr 320px;
   gap: 30px;
   padding: 40px;
-  flex: 1;
   max-width: 1200px;
-  margin: 0 auto;
   width: 100%;
+  margin: 0 auto;
   box-sizing: border-box;
 }
 
-/* Left Section */
-.profile-left {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
-
-/* Back Button */
-.btn-back {
+/* ---- Back button ---- */
+.user-profile-page .btn-back {
   background: transparent;
   border: none;
-  color: #2563EB;
+  color: var(--accent, #6C5CE7);
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  padding: 8px 0;
-  align-self: flex-start;
-  transition: color 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  margin-bottom: 24px;
+  transition: color 0.2s;
 }
 
-.btn-back:hover {
-  color: #1D4ED8;
+.user-profile-page .btn-back:hover {
+  color: var(--accent-hover, #5A4BD6);
 }
 
-/* User Header Card */
+/* ---- User header card ---- */
 .user-header-card {
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  background: var(--bg-card, rgba(18, 18, 26, 0.8));
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.06));
+  border-radius: var(--radius-card, 16px);
   padding: 28px;
   display: flex;
   align-items: center;
   gap: 24px;
+  margin-bottom: 24px;
 }
 
 .avatar {
   width: 68px;
   height: 68px;
   border-radius: 50%;
-  background: #2563EB;
-  color: white;
+  background: var(--accent, #6C5CE7);
+  color: #fff;
+  font-size: 24px;
+  font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 24px;
-  font-weight: 700;
   flex-shrink: 0;
-  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
-}
-
-.user-info-text {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  flex: 1;
+  box-shadow: 0 4px 16px var(--accent-glow, rgba(108, 92, 231, 0.4));
 }
 
 .user-title-row {
   display: flex;
   align-items: center;
   gap: 12px;
+  margin-bottom: 4px;
 }
 
 .user-title-row h1 {
   font-size: 26px;
-  color: #1F2937;
-  margin: 0;
   font-weight: 700;
+  color: var(--text-primary, #F8F8FF);
+  margin: 0;
 }
 
-.status-badge.active {
-  background: #D1FAE5;
-  color: #047857;
-  padding: 4px 10px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 600;
+.user-title-row .status-badge.active {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34D399;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .user-email {
   font-size: 14px;
-  color: #6B7280;
-  margin: 0;
+  color: var(--text-muted, #9B9BB4);
+  margin: 2px 0;
 }
 
 .user-meta {
   font-size: 13px;
-  color: #9CA3AF;
-  margin: 0;
+  color: var(--text-faint, #3D3D50);
+  margin-top: 4px;
 }
 
-/* Score Summary Card */
+/* ---- Score summary card ---- */
 .score-summary-card {
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  background: var(--bg-card, rgba(18, 18, 26, 0.8));
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.06));
+  border-radius: var(--radius-card, 16px);
   padding: 24px;
+  margin-bottom: 24px;
 }
 
 .score-summary-card h3 {
   font-size: 18px;
-  color: #1F2937;
-  margin: 0 0 18px 0;
   font-weight: 700;
+  color: var(--text-primary, #F8F8FF);
+  margin: 0 0 20px;
 }
 
 .score-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-  gap: 16px;
+  gap: 12px;
 }
 
 .score-stat-box {
-  background: #F9FAFB;
-  border: 1px solid #E5E7EB;
-  border-radius: 8px;
-  padding: 16px 12px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
+  background: var(--bg-subtle, #0D0D14);
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.06));
+  border-radius: var(--radius-btn, 8px);
+  padding: 16px;
   text-align: center;
 }
 
 .score-label {
   font-size: 12px;
-  color: #6B7280;
-  font-weight: 500;
+  color: var(--text-secondary, #6B6B80);
   text-transform: uppercase;
-  letter-spacing: 0.3px;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
 }
 
 .score-value {
   font-size: 20px;
-  color: #1F2937;
   font-weight: 700;
+  color: var(--text-primary, #F8F8FF);
 }
 
 .score-value.warning {
-  color: #F59E0B;
+  color: #FBBF24;
 }
 
 .score-value.success {
-  color: #10B981;
+  color: #34D399;
 }
 
-/* Completed Tasks Card */
+/* ---- Completed tasks card ---- */
 .completed-tasks-card {
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  padding: 24px;
+  background: var(--bg-card, rgba(18, 18, 26, 0.8));
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.06));
+  border-radius: var(--radius-card, 16px);
+  overflow: hidden;
 }
 
 .completed-tasks-card h3 {
   font-size: 18px;
-  color: #1F2937;
-  margin: 0 0 18px 0;
   font-weight: 700;
-}
-
-.tasks-table-container {
-  overflow-x: auto;
-  max-height: 400px;
-  overflow-y: auto;
+  color: var(--text-primary, #F8F8FF);
+  margin: 0;
+  padding: 24px 24px 0;
 }
 
 .completed-tasks-table {
   width: 100%;
   border-collapse: collapse;
-  text-align: left;
+  margin-top: 16px;
 }
 
 .completed-tasks-table th {
-  background: #F9FAFB;
-  color: #6B7280;
+  background: var(--bg-subtle, #0D0D14);
+  color: var(--text-secondary, #6B6B80);
   font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.3px;
-  padding: 12px 16px;
-  border-bottom: 1px solid #E5E7EB;
+  letter-spacing: 0.5px;
+  padding: 12px 20px;
+  text-align: left;
+  border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.06));
 }
 
 .completed-tasks-table td {
-  padding: 14px 16px;
-  border-bottom: 1px solid #F3F4F6;
+  color: var(--text-primary, #F8F8FF);
   font-size: 14px;
-  color: #1F2937;
+  padding: 14px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
 }
 
-.clickable-row {
+.completed-tasks-table .clickable-row {
   cursor: pointer;
-  transition: background 0.2s ease;
+  transition: background 0.15s;
 }
 
-.clickable-row:hover {
-  background: #F9FAFB;
+.completed-tasks-table .clickable-row:hover {
+  background: rgba(255, 255, 255, 0.02);
 }
 
 .task-name-cell {
+  color: var(--accent, #6C5CE7);
   font-weight: 600;
-  color: #2563EB;
 }
 
 .bounty-cell {
+  color: #34D399;
   font-weight: 700;
-  color: #10B981;
 }
 
 .rating-cell {
+  color: #FBBF24;
   font-weight: 600;
-  color: #F59E0B;
 }
 
 .date-cell {
-  color: #6B7280;
-  font-size: 13px;
+  color: var(--text-secondary, #6B6B80);
 }
 
-.empty-state {
-  text-align: center;
-  padding: 40px 20px;
-  color: #9CA3AF;
-  font-size: 14px;
-}
-
-/* Right Sidebar */
+/* ---- Profile right sidebar ---- */
 .profile-right {
   position: sticky;
   top: 20px;
-  height: fit-content;
+  align-self: start;
 }
 
 .profile-stats-card {
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  background: var(--bg-card, rgba(18, 18, 26, 0.8));
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.06));
+  border-radius: var(--radius-card, 16px);
   padding: 24px;
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-}
-
-.rating-display-header {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  gap: 4px;
 }
 
 .large-rating {
   font-size: 32px;
   font-weight: 800;
-  color: #F59E0B;
+  color: #FBBF24;
+  text-align: center;
+  margin-bottom: 4px;
 }
 
 .rating-subtext {
   font-size: 13px;
-  color: #6B7280;
-  font-weight: 500;
+  color: var(--text-secondary, #6B6B80);
+  text-align: center;
+  margin-bottom: 20px;
 }
 
 .divider {
   border: none;
-  border-top: 1px solid #E5E7EB;
-  margin: 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+  margin: 16px 0;
 }
 
-.stat-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
+/* ---- Stat items ---- */
 .stat-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 14px;
+  padding: 10px 0;
 }
 
 .stat-label {
-  color: #6B7280;
-  font-weight: 500;
+  font-size: 14px;
+  color: var(--text-secondary, #6B6B80);
 }
 
 .stat-value {
-  color: #1F2937;
+  font-size: 14px;
   font-weight: 700;
+  color: var(--text-primary, #F8F8FF);
 }
 
 .stat-value.highlight {
-  color: #10B981;
+  color: #34D399;
 }
 
-/* Skills Section */
-.skills-section {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.skills-title {
-  font-size: 13px;
-  color: #6B7280;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-}
-
-.skills-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
+/* ---- Skill tags ---- */
 .skill-tag {
-  background: #EFF6FF;
-  color: #2563EB;
-  padding: 6px 12px;
-  border-radius: 20px;
+  display: inline-block;
+  background: rgba(108, 92, 231, 0.15);
+  color: var(--accent, #6C5CE7);
+  border-radius: 999px;
+  padding: 6px 14px;
   font-size: 12px;
   font-weight: 600;
+  margin: 4px 4px 4px 0;
 }
 
-/* Action Buttons Section */
-.action-buttons-section {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
+/* ---- Profile action buttons ---- */
 .btn-profile-action {
-  width: 100%;
-  padding: 12px;
-  border-radius: 8px;
+  border-radius: var(--radius-btn, 8px);
   font-size: 14px;
   font-weight: 600;
+  padding: 12px 20px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  width: 100%;
   border: none;
-  text-align: center;
+  transition: background 0.2s, box-shadow 0.2s;
+  margin-top: 10px;
 }
 
 .btn-profile-action.primary {
-  background: #2563EB;
-  color: white;
+  background: var(--accent, #6C5CE7);
+  color: #fff;
 }
 
 .btn-profile-action.primary:hover {
-  background: #1D4ED8;
+  background: var(--accent-hover, #5A4BD6);
+  box-shadow: 0 4px 16px var(--accent-glow, rgba(108, 92, 231, 0.4));
 }
 
 .btn-profile-action.secondary {
-  background: #F3F4F6;
-  color: #374151;
-  border: 1px solid #E5E7EB;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-secondary, #6B6B80);
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.06));
 }
 
 .btn-profile-action.secondary:hover {
-  background: #E5E7EB;
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .btn-profile-action.danger {
-  background: #FEE2E2;
-  color: #DC2626;
-  border: 1px solid #FCA5A5;
+  background: rgba(220, 38, 38, 0.1);
+  color: #FCA5A5;
+  border: 1px solid rgba(220, 38, 38, 0.3);
 }
 
 .btn-profile-action.danger:hover {
-  background: #FCA5A5;
-  color: #991B1B;
+  background: rgba(220, 38, 38, 0.2);
 }
 
-/* Loading & Error containers */
-.loading-container,
-.error-container {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  padding: 60px 20px;
-  text-align: center;
-  color: #6B7280;
-  gap: 16px;
-}
-
-/* Responsive Layout */
+/* ---- Responsive ---- */
 @media (max-width: 1024px) {
   .user-profile-container {
     grid-template-columns: 1fr;
-    gap: 24px;
     padding: 24px;
   }
 
@@ -424,7 +361,7 @@
 
 @media (max-width: 768px) {
   .user-profile-container {
-    padding: 16px;
+    padding: 20px 16px;
   }
 
   .user-header-card {
@@ -437,7 +374,17 @@
     justify-content: center;
   }
 
+  .user-title-row h1 {
+    font-size: 22px;
+  }
+
   .score-grid {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  .completed-tasks-table th,
+  .completed-tasks-table td {
+    padding: 10px 14px;
+    font-size: 13px;
   }
 }

@@ -27,7 +27,8 @@ export default function HowItWorks() {
   return (
     <section id="how-it-works" className="how-it-works-section">
       <div className="section-header">
-        <h2>Four steps, start to finish</h2>
+        <span className="section-badge">Process</span>
+        <h2>Four steps, <span className="text-gradient">start to finish</span></h2>
         <p>No negotiation, no scope creep. The process is the same every time.</p>
       </div>
 

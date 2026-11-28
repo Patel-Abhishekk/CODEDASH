@@ -125,7 +125,8 @@ export default function FeaturesSection() {
   return (
     <section id="features" className="features-section">
       <div className="section-header">
-        <h2>How CodeDash works for you</h2>
+        <span className="section-badge">Features</span>
+        <h2>Everything you need to <span className="text-gradient">get work done</span></h2>
         <p>Every feature exists to make posting and solving tasks straightforward.</p>
       </div>
 
