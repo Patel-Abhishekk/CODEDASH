@@ -9,16 +9,24 @@ const registerUser = async (req, res) => {
   try {
     const { username, email, password } = req.body;
     
-    // Validate
-    if (!username || !email || !password) {
+    // Validate types to prevent NoSQL injection / object injection
+    if (typeof username !== 'string' || typeof email !== 'string' || typeof password !== 'string') {
+      return res.status(400).json({ success: false, message: 'Invalid input types' });
+    }
+
+    const cleanUsername = username.trim();
+    const cleanEmail = email.trim().toLowerCase();
+
+    // Validate format
+    if (!cleanUsername || !cleanEmail || !password) {
       return res.status(400).json({ success: false, message: 'Missing required fields' });
     }
 
-    if (!validateUsername(username)) {
+    if (!validateUsername(cleanUsername)) {
       return res.status(400).json({ success: false, message: 'Invalid username format' });
     }
     
-    if (!validateEmail(email)) {
+    if (!validateEmail(cleanEmail)) {
       return res.status(400).json({ success: false, message: 'Invalid email format' });
     }
     
@@ -27,13 +35,13 @@ const registerUser = async (req, res) => {
     }
 
     // Check if email exists
-    let user = await User.findOne({ email });
+    let user = await User.findOne({ email: cleanEmail });
     if (user) {
       return res.status(400).json({ success: false, message: 'Email already registered' });
     }
 
     // Check if username exists
-    user = await User.findOne({ username });
+    user = await User.findOne({ username: cleanUsername });
     if (user) {
       return res.status(400).json({ success: false, message: 'Username already taken' });
     }
@@ -42,12 +50,14 @@ const registerUser = async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
 
-    // Create user
+    // Create user with explicit whitelist - Item 8 (Admin at signup mass assignment protection)
+    // Any injected 'role', 'walletBalance', 'engineerScore', or 'id' in req.body is completely ignored.
     const newUser = new User({
       id: uuidv4(),
-      username,
-      email,
+      username: cleanUsername,
+      email: cleanEmail,
       passwordHash,
+      role: 'user', // Always standard user at signup
       walletBalance: 1000,
       escrowHeld: 0,
       engineerScore: {
@@ -61,7 +71,7 @@ const registerUser = async (req, res) => {
     });
 
     await newUser.save();
-    console.log(`✅ User registered: ${email}`);
+    console.log(`✅ User registered: ${cleanEmail}`);
 
     res.status(201).json({
       success: true,
@@ -70,6 +80,7 @@ const registerUser = async (req, res) => {
         id: newUser.id,
         username: newUser.username,
         email: newUser.email,
+        role: newUser.role,
         walletBalance: newUser.walletBalance,
         escrowHeld: newUser.escrowHeld,
         engineerScore: newUser.engineerScore,
@@ -88,12 +99,18 @@ const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    if (!email || !password) {
+    // Strict string checks to prevent NoSQL injection via operator objects - Item 14
+    if (typeof email !== 'string' || typeof password !== 'string') {
       return res.status(400).json({ success: false, message: 'Email and password required' });
     }
 
-    // Find user
-    const user = await User.findOne({ email });
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail || !password) {
+      return res.status(400).json({ success: false, message: 'Email and password required' });
+    }
+
+    // Find user by sanitized string email
+    const user = await User.findOne({ email: cleanEmail });
     if (!user) {
       return res.status(400).json({ success: false, message: 'Email or password incorrect' });
     }
@@ -104,13 +121,13 @@ const loginUser = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Email or password incorrect' });
     }
 
-    // Generate token
+    // Generate token with role claim
     const token = jwt.sign(
-      { userId: user.id, email: user.email },
+      { userId: user.id, email: user.email, role: user.role || 'user' },
       process.env.JWT_SECRET || 'secret-key',
       { expiresIn: '7d' }
     );
-    console.log(`✅ User logged in: ${email}`);
+    console.log(`✅ User logged in: ${cleanEmail}`);
 
     res.json({
       success: true,
@@ -119,6 +136,7 @@ const loginUser = async (req, res) => {
         id: user.id,
         username: user.username,
         email: user.email,
+        role: user.role || 'user',
         walletBalance: user.walletBalance,
         escrowHeld: user.escrowHeld,
         engineerScore: user.engineerScore,
@@ -137,26 +155,42 @@ const loginUser = async (req, res) => {
 const getUserById = async (req, res) => {
   try {
     const { userId } = req.params;
+    if (typeof userId !== 'string') {
+      return res.status(400).json({ success: false, message: 'Invalid user ID' });
+    }
+
     const user = await User.findOne({ id: userId });
-    
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
-    
+
+    // IDOR Protection - Item 2:
+    // If the requester is viewing another user's profile and is not an admin,
+    // do NOT leak private financial data (walletBalance, escrowHeld) or private email.
+    const isOwner = req.user && req.user.id === user.id;
+    const isAdmin = req.user && req.user.role === 'admin';
+
+    const userData = {
+      id: user.id,
+      username: user.username,
+      engineerScore: user.engineerScore,
+      tasksPosted: user.tasksPosted,
+      tasksClaimed: user.tasksClaimed,
+      tasksCompleted: user.tasksCompleted,
+      createdAt: user.createdAt
+    };
+
+    if (isOwner || isAdmin) {
+      userData.email = user.email;
+      userData.role = user.role || 'user';
+      userData.walletBalance = user.walletBalance;
+      userData.escrowHeld = user.escrowHeld;
+    }
+
     res.status(200).json({
       success: true,
       message: 'User fetched successfully',
-      user: {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        walletBalance: user.walletBalance,
-        escrowHeld: user.escrowHeld,
-        engineerScore: user.engineerScore,
-        tasksPosted: user.tasksPosted,
-        tasksClaimed: user.tasksClaimed,
-        tasksCompleted: user.tasksCompleted
-      }
+      user: userData
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -166,6 +200,15 @@ const getUserById = async (req, res) => {
 const getUserNotifications = async (req, res) => {
   try {
     const { userId } = req.params;
+    if (typeof userId !== 'string') {
+      return res.status(400).json({ success: false, message: 'Invalid user ID' });
+    }
+
+    // IDOR Protection - Item 2: User can only access their own notifications unless admin
+    if (req.user && req.user.id !== userId && req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Access denied. You cannot view another user’s notifications.' });
+    }
+
     const notifications = await Notification.find({ userId }).sort({ createdAt: -1 });
     
     res.status(200).json({
@@ -180,7 +223,8 @@ const getUserNotifications = async (req, res) => {
 
 const markNotificationsRead = async (req, res) => {
   try {
-    const userId = req.user?.id || req.body.userId;
+    // IDOR Protection - Item 2: Always use authenticated user id
+    const userId = req.user.id;
     await Notification.updateMany({ userId, read: false }, { read: true });
     
     res.status(200).json({ success: true, message: 'Notifications marked as read' });
@@ -189,6 +233,12 @@ const markNotificationsRead = async (req, res) => {
   }
 };
 
-// Also exported register and login so routes that expect them will work, if renamed.
-// The original used registerUser and loginUser, the task requested register and login, I will export both mapping to be safe
-module.exports = { registerUser, loginUser, getUserById, getUserNotifications, markNotificationsRead, register: registerUser, login: loginUser };
+module.exports = {
+  registerUser,
+  loginUser,
+  getUserById,
+  getUserNotifications,
+  markNotificationsRead,
+  register: registerUser,
+  login: loginUser
+};

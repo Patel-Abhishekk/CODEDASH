@@ -2,45 +2,61 @@ const Task = require('../models/Task');
 const User = require('../models/User');
 const { v4: uuidv4 } = require('uuid');
 const { createNotification } = require('./notificationController');
+const { sanitizeInput, escapeRegex, validateBounty, validateDeadlineHours, validateRating } = require('../utils/validation');
 
 const postTask = async (req, res) => {
   try {
     const { title, description, bounty, deadlineHours } = req.body;
-    const userId = req.user?.id || req.body.userId;
+    // IDOR Protection - Item 2: Always use authenticated user's ID
+    const userId = req.user.id;
 
-    if (!title || !description || !bounty || !userId) {
+    if (!title || !description || bounty === undefined || !userId) {
       return res.status(400).json({ success: false, message: 'Missing required fields' });
     }
     
-    if (bounty < 100 || bounty > 100000) {
+    // Business Logic / Edit Price & Order -1 Items - Items 4 & 5: Validate bounty strictly
+    if (!validateBounty(bounty)) {
       return res.status(400).json({ success: false, message: 'Bounty must be ₹100-₹100,000' });
     }
+    const numBounty = Number(bounty);
 
-    const user = await User.findOne({ id: userId });
-    if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found' });
+    const hours = deadlineHours ? Number(deadlineHours) : 2;
+    if (!validateDeadlineHours(hours)) {
+      return res.status(400).json({ success: false, message: 'Deadline hours must be between 1 and 48' });
     }
 
-    if (user.walletBalance < bounty) {
+    // Race Condition Defense - Item 7: Atomically deduct balance only if walletBalance >= bounty
+    const user = await User.findOneAndUpdate(
+      { id: userId, walletBalance: { $gte: numBounty } },
+      { $inc: { walletBalance: -numBounty, escrowHeld: numBounty } },
+      { new: true }
+    );
+
+    if (!user) {
       return res.status(400).json({ success: false, message: 'Insufficient wallet balance' });
     }
 
     const newTask = new Task({
       id: uuidv4(),
-      title,
-      description,
-      bounty,
+      title: sanitizeInput(title),
+      description: sanitizeInput(description),
+      bounty: numBounty,
       postedBy: userId,
-      deadlineHours: deadlineHours || 2,
+      deadlineHours: hours,
       status: 'open'
     });
 
-    await newTask.save();
-
-    user.walletBalance -= bounty;
-    user.escrowHeld += bounty;
-    user.tasksPosted.push(newTask.id);
-    await user.save();
+    try {
+      await newTask.save();
+      await User.findOneAndUpdate({ id: userId }, { $push: { tasksPosted: newTask.id } });
+    } catch (saveError) {
+      // Roll back atomic deduction if task creation fails
+      await User.findOneAndUpdate(
+        { id: userId },
+        { $inc: { walletBalance: numBounty, escrowHeld: -numBounty } }
+      );
+      throw saveError;
+    }
 
     console.log(`✅ Task posted: ${title} by ${userId}`);
     res.status(201).json({ success: true, message: 'Task posted successfully', task: newTask });
@@ -81,8 +97,8 @@ const enrichTask = async (task) => {
 
 const getOpenTasks = async (req, res) => {
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 10));
     const skip = (page - 1) * limit;
 
     const tasks = await Task.find({ status: 'open' }).sort({ createdAt: -1 }).skip(skip).limit(limit);
@@ -107,6 +123,10 @@ const getOpenTasks = async (req, res) => {
 const getTaskById = async (req, res) => {
   try {
     const taskId = req.params.taskId || req.body?.taskId;
+    if (typeof taskId !== 'string') {
+      return res.status(400).json({ success: false, message: 'Invalid task ID' });
+    }
+
     const task = await Task.findOne({ id: taskId });
 
     if (!task) {
@@ -123,35 +143,48 @@ const getTaskById = async (req, res) => {
 
 const claimTask = async (req, res) => {
   try {
-    const taskId = req.params.taskId || req.body.taskId;
-    const userId = req.user?.id || req.body.userId;
+    const taskId = req.params.taskId || req.body?.taskId;
+    // IDOR Protection - Item 2: Always use authenticated user's ID
+    const userId = req.user.id;
 
-    if (!taskId || !userId) {
-      return res.status(400).json({ success: false, message: 'Missing required fields' });
+    if (!taskId || typeof taskId !== 'string') {
+      return res.status(400).json({ success: false, message: 'Missing or invalid task ID' });
     }
 
-    const task = await Task.findOne({ id: taskId });
-    if (!task) {
+    const taskCheck = await Task.findOne({ id: taskId });
+    if (!taskCheck) {
       return res.status(404).json({ success: false, message: 'Task not found' });
     }
 
-    if (task.status !== 'open') {
-      return res.status(400).json({ success: false, message: 'Task already claimed' });
-    }
-
-    if (task.postedBy === userId) {
+    if (taskCheck.postedBy === userId) {
       return res.status(400).json({ success: false, message: 'You cannot claim your own task' });
     }
 
-    task.status = 'claimed';
-    task.claimedBy = userId;
-    task.claimedAt = new Date();
-    task.claimDeadline = new Date(Date.now() + (task.deadlineHours || 2) * 60 * 60 * 1000);
-    await task.save();
+    const deadlineMs = (taskCheck.deadlineHours || 2) * 60 * 60 * 1000;
+    const claimedAt = new Date();
+    const claimDeadline = new Date(Date.now() + deadlineMs);
 
+    // Race Condition Defense - Item 7: Atomic compare-and-swap
+    // Only ONE concurrent request can claim the task where status === 'open'
+    const task = await Task.findOneAndUpdate(
+      { id: taskId, status: 'open', postedBy: { $ne: userId } },
+      {
+        $set: {
+          status: 'claimed',
+          claimedBy: userId,
+          claimedAt: claimedAt,
+          claimDeadline: claimDeadline
+        }
+      },
+      { new: true }
+    );
+
+    if (!task) {
+      return res.status(400).json({ success: false, message: 'Task already claimed' });
+    }
+
+    await User.findOneAndUpdate({ id: userId }, { $addToSet: { tasksClaimed: taskId } });
     const user = await User.findOne({ id: userId });
-    user.tasksClaimed.push(taskId);
-    await user.save();
 
     await createNotification(
       task.postedBy,
@@ -184,40 +217,60 @@ const claimTask = async (req, res) => {
 
 const submitProof = async (req, res) => {
   try {
-    const taskId = req.params.taskId || req.body.taskId;
-    const userId = req.user?.id || req.body.userId;
+    const taskId = req.params.taskId || req.body?.taskId;
+    // IDOR Protection - Item 2: Always use authenticated user's ID
+    const userId = req.user.id;
     const { proofOfWork } = req.body;
 
-    if (!taskId || !userId || !proofOfWork) {
+    if (!taskId || !proofOfWork || typeof proofOfWork !== 'string') {
       return res.status(400).json({ success: false, message: 'Missing required fields' });
     }
 
-    const task = await Task.findOne({ id: taskId });
-    if (!task) {
+    const cleanProof = sanitizeInput(proofOfWork);
+    if (cleanProof.length < 10) {
+      return res.status(400).json({ success: false, message: 'Proof of work must be at least 10 characters' });
+    }
+
+    const existingTask = await Task.findOne({ id: taskId });
+    if (!existingTask) {
       return res.status(404).json({ success: false, message: 'Task not found' });
     }
 
-    if (task.status !== 'claimed') {
-      return res.status(400).json({ success: false, message: 'Task must be in claimed status' });
-    }
-
-    if (task.claimedBy !== userId) {
+    if (existingTask.claimedBy !== userId) {
       return res.status(400).json({ success: false, message: 'Only the claimer can submit proof' });
     }
 
-    if (new Date() > task.claimDeadline) {
-      task.status = 'open';
-      task.claimedBy = null;
-      task.claimedAt = null;
-      task.claimDeadline = null;
-      await task.save();
+    if (new Date() > existingTask.claimDeadline) {
+      await Task.findOneAndUpdate(
+        { id: taskId, status: 'claimed' },
+        {
+          $set: {
+            status: 'open',
+            claimedBy: null,
+            claimedAt: null,
+            claimDeadline: null
+          }
+        }
+      );
       return res.status(400).json({ success: false, message: 'Claim deadline has passed. Task reverted to open.' });
     }
 
-    task.proofOfWork = proofOfWork;
-    task.submittedAt = new Date();
-    task.status = 'under-review';
-    await task.save();
+    // Race Condition Defense - Item 7: Atomic status transition from claimed to under-review
+    const task = await Task.findOneAndUpdate(
+      { id: taskId, claimedBy: userId, status: 'claimed' },
+      {
+        $set: {
+          proofOfWork: cleanProof,
+          submittedAt: new Date(),
+          status: 'under-review'
+        }
+      },
+      { new: true }
+    );
+
+    if (!task) {
+      return res.status(400).json({ success: false, message: 'Task must be in claimed status' });
+    }
 
     const solver = await User.findOne({ id: userId });
     await createNotification(
@@ -247,38 +300,46 @@ const submitProof = async (req, res) => {
 
 const approveTask = async (req, res) => {
   try {
-    const taskId = req.params.taskId || req.body.taskId;
-    const userId = req.user?.id || req.body.userId;
-    const rating = Number(req.body.rating);
+    const taskId = req.params.taskId || req.body?.taskId;
+    // IDOR Protection - Item 2: Always use authenticated user's ID
+    const userId = req.user.id;
+    const rating = req.body?.rating;
 
-    if (!taskId || !userId || !rating) {
+    if (!taskId || rating === undefined) {
       return res.status(400).json({ success: false, message: 'Missing required fields' });
     }
 
-    if (rating < 1 || rating > 5) {
+    // Business Logic / Input Validation - Item 5: Validate rating strictly
+    if (!validateRating(rating)) {
       return res.status(400).json({ success: false, message: 'Rating must be between 1 and 5' });
     }
+    const cleanRating = Number(rating);
 
-    const task = await Task.findOne({ id: taskId });
+    // Race Condition Defense - Item 7 (Redeem 100 times / Double payout protection):
+    // Atomically transition status from 'under-review' to 'approved'.
+    // Only the single winning request will match and modify the document.
+    const task = await Task.findOneAndUpdate(
+      { id: taskId, postedBy: userId, status: 'under-review' },
+      {
+        $set: {
+          status: 'approved',
+          approvedAt: new Date(),
+          rating: cleanRating,
+          escrowResolved: true,
+          escrowResolvedAt: new Date()
+        }
+      },
+      { new: true }
+    );
+
     if (!task) {
-      return res.status(404).json({ success: false, message: 'Task not found' });
-    }
-
-    if (task.status !== 'under-review') {
+      const checkTask = await Task.findOne({ id: taskId });
+      if (!checkTask) return res.status(404).json({ success: false, message: 'Task not found' });
+      if (checkTask.postedBy !== userId) return res.status(400).json({ success: false, message: 'Only the poster can approve this task' });
       return res.status(400).json({ success: false, message: 'Task must be under review to approve' });
     }
 
-    if (task.postedBy !== userId) {
-      return res.status(400).json({ success: false, message: 'Only the poster can approve this task' });
-    }
-
-    task.status = 'approved';
-    task.approvedAt = new Date();
-    task.rating = rating;
-    task.escrowResolved = true;
-    task.escrowResolvedAt = new Date();
-    await task.save();
-
+    // Atomic financial resolution (Single execution guaranteed by atomic state change)
     const solver = await User.findOne({ id: task.claimedBy });
     if (!solver) return res.status(404).json({ success: false, message: 'Solver not found' });
 
@@ -287,17 +348,19 @@ const approveTask = async (req, res) => {
 
     solver.walletBalance += task.bounty;
     solver.tasksCompleted.push(taskId);
-    solver.engineerScore.bugsSolved += 1;
+    solver.engineerScore.bugsSolved = (solver.engineerScore.bugsSolved || 0) + 1;
 
     const totalRatings = solver.engineerScore.totalRatings || 0;
     const currentAvg = solver.engineerScore.averageRating || 0;
-    const newAvg = (currentAvg * totalRatings + rating) / (totalRatings + 1);
+    const newAvg = (currentAvg * totalRatings + cleanRating) / (totalRatings + 1);
     solver.engineerScore.averageRating = parseFloat(newAvg.toFixed(2));
     solver.engineerScore.totalRatings = totalRatings + 1;
     await solver.save();
 
-    poster.escrowHeld -= task.bounty;
-    await poster.save();
+    await User.findOneAndUpdate(
+      { id: task.postedBy, escrowHeld: { $gte: task.bounty } },
+      { $inc: { escrowHeld: -task.bounty } }
+    );
 
     await createNotification(
       task.claimedBy,
@@ -308,7 +371,7 @@ const approveTask = async (req, res) => {
       {
         taskTitle: task.title,
         posterUsername: poster.username,
-        rating: rating,
+        rating: cleanRating,
         earned: task.bounty,
       },
       `/task/${task.id}`
@@ -337,7 +400,26 @@ const checkAndResolveGhostingCore = async (autoResolve = false) => {
     const hoursElapsed = (currentTime - submittedTime) / (1000 * 60 * 60);
 
     if (hoursElapsed > 48) {
-      const halfBounty = task.bounty / 2;
+      // Atomic compare-and-swap so concurrent background jobs don't double split
+      const updatedTask = await Task.findOneAndUpdate(
+        { id: task.id, status: 'under-review' },
+        {
+          $set: {
+            status: 'abandoned',
+            escrowResolved: true,
+            escrowResolvedAt: currentTime,
+            escrowSplitRatio: {
+              solverPercentage: 50,
+              posterPercentage: 50,
+            }
+          }
+        },
+        { new: true }
+      );
+
+      if (!updatedTask) continue; // Already handled by another thread
+
+      const halfBounty = Math.floor(task.bounty / 2);
 
       const solver = await User.findOne({ id: task.claimedBy });
       const poster = await User.findOne({ id: task.postedBy });
@@ -345,21 +427,12 @@ const checkAndResolveGhostingCore = async (autoResolve = false) => {
       if (solver && poster) {
         solver.walletBalance += halfBounty;
         solver.tasksCompleted.push(task.id);
-        solver.engineerScore.bugsSolved += 1;
+        solver.engineerScore.bugsSolved = (solver.engineerScore.bugsSolved || 0) + 1;
         await solver.save();
 
         poster.walletBalance += halfBounty;
-        poster.escrowHeld -= task.bounty;
+        poster.escrowHeld = Math.max(0, poster.escrowHeld - task.bounty);
         await poster.save();
-
-        task.status = 'abandoned';
-        task.escrowResolved = true;
-        task.escrowResolvedAt = currentTime;
-        task.escrowSplitRatio = {
-          solverPercentage: 50,
-          posterPercentage: 50,
-        };
-        await task.save();
 
         await createNotification(
           task.postedBy,
@@ -395,8 +468,12 @@ const checkAndResolveGhostingCore = async (autoResolve = false) => {
   return { resolvedCount, resolvedTasksList };
 };
 
+// Item 1: Access Control & Privilege Escalation - Protected RBAC admin action
 const checkAndResolveGhosting = async (req, res) => {
   try {
+    if (req.user && req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Access denied: Admin role required' });
+    }
     const { resolvedCount } = await checkAndResolveGhostingCore();
     res.status(200).json({
       message: `Ghosting check complete. ${resolvedCount} task(s) auto-resolved with 50/50 split.`,
@@ -409,6 +486,9 @@ const checkAndResolveGhosting = async (req, res) => {
 
 const autoResolveGhosting = async (req, res) => {
   try {
+    if (req.user && req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Access denied: Admin role required' });
+    }
     const { resolvedCount, resolvedTasksList } = await checkAndResolveGhostingCore();
     console.log(`Auto-resolved ${resolvedCount} abandoned tasks`);
     res.status(200).json({
@@ -423,33 +503,35 @@ const autoResolveGhosting = async (req, res) => {
 
 const deleteTask = async (req, res) => {
   try {
-    const taskId = req.params.taskId || req.body.taskId;
-    const userId = req.user?.id || req.body.userId;
+    const taskId = req.params.taskId || req.body?.taskId;
+    // IDOR Protection - Item 2: Always use authenticated user's ID
+    const userId = req.user.id;
 
-    if (!taskId || !userId) {
-      return res.status(400).json({ success: false, message: 'Missing required fields' });
+    if (!taskId || typeof taskId !== 'string') {
+      return res.status(400).json({ success: false, message: 'Missing or invalid task ID' });
     }
 
-    const task = await Task.findOne({ id: taskId });
-    if (!task) return res.status(404).json({ success: false, message: 'Task not found' });
-    
-    if (task.postedBy !== userId) {
-      return res.status(403).json({ success: false, message: 'Only the task poster can delete this task' });
-    }
-
-    if (task.status !== 'open') {
+    // Race Condition Defense - Item 7 (Redeem 100 times / Double refund prevention):
+    // Atomically delete only if status === 'open' and postedBy === userId
+    const task = await Task.findOneAndDelete({ id: taskId, postedBy: userId, status: 'open' });
+    if (!task) {
+      const existing = await Task.findOne({ id: taskId });
+      if (!existing) return res.status(404).json({ success: false, message: 'Task not found' });
+      if (existing.postedBy !== userId) {
+        return res.status(403).json({ success: false, message: 'Only the task poster can delete this task' });
+      }
       return res.status(400).json({ success: false, message: 'Only open tasks can be deleted' });
     }
 
-    const user = await User.findOne({ id: userId });
-    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
-
-    user.walletBalance += task.bounty;
-    user.escrowHeld -= task.bounty;
-    user.tasksPosted = user.tasksPosted.filter(id => id !== taskId);
-    await user.save();
-
-    await Task.deleteOne({ id: taskId });
+    // Atomically refund escrow to user wallet
+    const user = await User.findOneAndUpdate(
+      { id: userId },
+      {
+        $inc: { walletBalance: task.bounty, escrowHeld: -task.bounty },
+        $pull: { tasksPosted: taskId }
+      },
+      { new: true }
+    );
 
     res.status(200).json({
       success: true,
@@ -463,37 +545,45 @@ const deleteTask = async (req, res) => {
 
 const rejectTask = async (req, res) => {
   try {
-    const taskId = req.params.taskId || req.body.taskId;
-    const userId = req.user?.id || req.body.userId;
+    const taskId = req.params.taskId || req.body?.taskId;
+    // IDOR Protection - Item 2: Always use authenticated user's ID
+    const userId = req.user.id;
     const { rejectionReason } = req.body;
 
-    if (!taskId || !userId || !rejectionReason) {
+    if (!taskId || !rejectionReason || typeof rejectionReason !== 'string') {
       return res.status(400).json({ success: false, message: 'Missing required fields' });
     }
 
-    if (typeof rejectionReason !== 'string' || rejectionReason.trim().length < 10) {
+    // XSS Protection - Item 11: Sanitize rejection reason
+    const cleanReason = sanitizeInput(rejectionReason);
+    if (cleanReason.length < 10) {
       return res.status(400).json({ success: false, message: 'Rejection reason must be at least 10 characters' });
     }
 
-    const task = await Task.findOne({ id: taskId });
-    if (!task) return res.status(404).json({ success: false, message: 'Task not found' });
-    
-    if (task.postedBy !== userId) {
-      return res.status(403).json({ success: false, message: 'Only the poster can reject this task' });
-    }
+    // Race Condition Defense - Item 7: Atomic compare-and-swap
+    const task = await Task.findOneAndUpdate(
+      { id: taskId, postedBy: userId, status: 'under-review' },
+      {
+        $set: {
+          status: 'claimed',
+          proofOfWork: null,
+          submittedAt: null,
+          rejectionReason: cleanReason,
+          rejectedAt: new Date()
+        },
+        $inc: { rejectionCount: 1 }
+      },
+      { new: true }
+    );
 
-    if (task.status !== 'under-review') {
+    if (!task) {
+      const existing = await Task.findOne({ id: taskId });
+      if (!existing) return res.status(404).json({ success: false, message: 'Task not found' });
+      if (existing.postedBy !== userId) {
+        return res.status(403).json({ success: false, message: 'Only the poster can reject this task' });
+      }
       return res.status(400).json({ success: false, message: 'Task must be under-review to reject' });
     }
-
-    task.status = 'claimed';
-    task.proofOfWork = null;
-    task.submittedAt = null;
-    task.rejectionReason = rejectionReason.trim();
-    task.rejectedAt = new Date();
-    task.rejectionCount = (task.rejectionCount || 0) + 1;
-    
-    await task.save();
 
     res.status(200).json({
       success: true,
@@ -511,31 +601,42 @@ const searchTasks = async (req, res) => {
 
     let filter = {};
 
-    if (search && search.trim()) {
-      const q = search.trim();
+    // ReDoS & NoSQL Injection Protection - Item 14:
+    // Safely escape regex metacharacters
+    if (search && typeof search === 'string' && search.trim()) {
+      const safeQuery = escapeRegex(search.trim().substring(0, 50));
       filter.$or = [
-        { title: { $regex: q, $options: 'i' } },
-        { description: { $regex: q, $options: 'i' } }
+        { title: { $regex: safeQuery, $options: 'i' } },
+        { description: { $regex: safeQuery, $options: 'i' } }
       ];
     }
 
     if (minBounty && !isNaN(Number(minBounty))) {
-      filter.bounty = { ...filter.bounty, $gte: Number(minBounty) };
+      const min = Math.max(0, parseInt(minBounty));
+      filter.bounty = { ...filter.bounty, $gte: min };
     }
     if (maxBounty && !isNaN(Number(maxBounty))) {
-      filter.bounty = { ...filter.bounty, $lte: Number(maxBounty) };
+      const max = Math.max(0, parseInt(maxBounty));
+      filter.bounty = { ...filter.bounty, $lte: max };
     }
 
     if (deadline && !isNaN(Number(deadline))) {
-      filter.deadlineHours = { ...filter.deadlineHours, $lte: Number(deadline) };
+      const d = Math.max(1, parseInt(deadline));
+      filter.deadlineHours = { ...filter.deadlineHours, $lte: d };
     }
 
-    if (status && status !== 'all') {
-      const statuses = status.split(',').map(s => s.trim().toLowerCase());
-      filter.status = { $in: statuses };
+    const ALLOWED_STATUSES = ['open', 'claimed', 'under-review', 'approved', 'rejected', 'abandoned'];
+    if (status && typeof status === 'string' && status !== 'all') {
+      const statuses = status
+        .split(',')
+        .map(s => s.trim().toLowerCase())
+        .filter(s => ALLOWED_STATUSES.includes(s));
+      if (statuses.length > 0) {
+        filter.status = { $in: statuses };
+      }
     }
 
-    if (type && userId) {
+    if (type && userId && typeof userId === 'string') {
       if (type === 'posted') {
         filter.postedBy = userId;
       } else if (type === 'claimed') {
@@ -556,8 +657,8 @@ const searchTasks = async (req, res) => {
       sortObj = { deadlineHours: 1 };
     }
 
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 20;
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 20));
     const skip = (page - 1) * limit;
 
     const total = await Task.countDocuments(filter);

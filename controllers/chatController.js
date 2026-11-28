@@ -1,8 +1,13 @@
 const Chat = require('../models/Chat');
 const Task = require('../models/Task');
 const User = require('../models/User');
+const { sanitizeInput } = require('../utils/validation');
 
 const validateChatAccess = async (taskId, userId) => {
+  if (typeof taskId !== 'string' || typeof userId !== 'string') {
+    return { valid: false, message: 'Invalid task or user identifier' };
+  }
+
   const task = await Task.findOne({ id: taskId });
 
   if (!task) {
@@ -39,10 +44,11 @@ const validateChatAccess = async (taskId, userId) => {
 const getChatHistory = async (req, res) => {
   try {
     const { taskId } = req.params;
-    const userId = req.user?.id || req.query.userId;
+    // IDOR Protection - Item 2: Always use authenticated user's ID
+    const userId = req.user.id;
 
-    if (!taskId || !userId) {
-      return res.status(400).json({ success: false, message: 'Missing taskId or userId' });
+    if (!taskId) {
+      return res.status(400).json({ success: false, message: 'Missing taskId' });
     }
 
     const access = await validateChatAccess(taskId, userId);
@@ -72,6 +78,10 @@ const getChatHistory = async (req, res) => {
 };
 
 const saveChatMessage = async (taskId, senderId, messageText) => {
+  if (typeof taskId !== 'string' || typeof senderId !== 'string') {
+    throw new Error('Invalid task or sender ID');
+  }
+
   const access = await validateChatAccess(taskId, senderId);
   if (!access.valid) {
     throw new Error(access.message);
@@ -85,11 +95,17 @@ const saveChatMessage = async (taskId, senderId, messageText) => {
     throw new Error('Message exceeds 500 characters limit');
   }
 
+  // XSS Protection - Item 11: Sanitize chat message
+  const cleanMessage = sanitizeInput(messageText);
+  if (!cleanMessage) {
+    throw new Error('Message contains invalid characters');
+  }
+
   const newChat = new Chat({
     taskId,
     senderId,
     receiverId: access.otherUserId,
-    message: messageText.trim()
+    message: cleanMessage
   });
 
   await newChat.save();
@@ -99,10 +115,8 @@ const saveChatMessage = async (taskId, senderId, messageText) => {
 
 const getUserChats = async (req, res) => {
   try {
-    const userId = req.user?.id || req.params.userId;
-    if (!userId) {
-      return res.status(400).json({ success: false, message: 'User ID is required' });
-    }
+    // IDOR Protection - Item 2: Always use authenticated user ID unless admin
+    const userId = (req.user.role === 'admin' && req.params.userId) ? req.params.userId : req.user.id;
 
     const allowedStatuses = ['claimed', 'under-review', 'approved'];
 
@@ -148,9 +162,10 @@ const getUserChats = async (req, res) => {
 const markMessagesRead = async (req, res) => {
   try {
     const taskId = req.body.taskId;
-    const userId = req.user?.id || req.body.userId;
-    if (!taskId || !userId) {
-      return res.status(400).json({ success: false, message: 'Missing taskId or userId' });
+    // IDOR Protection - Item 2: Always use authenticated user ID
+    const userId = req.user.id;
+    if (!taskId) {
+      return res.status(400).json({ success: false, message: 'Missing taskId' });
     }
 
     await Chat.updateMany({ taskId, receiverId: userId, read: false }, { read: true });
@@ -168,3 +183,4 @@ module.exports = {
   getUserChats,
   markMessagesRead,
 };
+

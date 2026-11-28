@@ -15,7 +15,8 @@ const authMiddleware = (req, res, next) => {
     // Attach decoded user info to request
     req.user = {
       id: decoded.userId,
-      email: decoded.email
+      email: decoded.email,
+      role: decoded.role || 'user'
     };
 
     next();
@@ -30,4 +31,31 @@ const authMiddleware = (req, res, next) => {
   }
 };
 
+/**
+ * Role-Based Access Control (RBAC) middleware
+ * Protects against Item 1: Type /admin (unauthorized admin access)
+ */
+const requireRole = (...allowedRoles) => {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: 'Authentication required.' });
+    }
+
+    if (!allowedRoles.includes(req.user.role)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied: Insufficient privileges.'
+      });
+    }
+
+    next();
+  };
+};
+
+const adminMiddleware = requireRole('admin');
+
 module.exports = authMiddleware;
+module.exports.authMiddleware = authMiddleware;
+module.exports.requireRole = requireRole;
+module.exports.adminMiddleware = adminMiddleware;
+

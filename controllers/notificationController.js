@@ -38,10 +38,10 @@ const createNotification = async (userId, type, taskId, message, relatedUserId =
 
 const getNotifications = async (req, res) => {
   try {
-    const userId = req.query.userId || req.params.userId || req.user?.id;
-    if (!userId) {
-      return res.status(400).json({ success: false, message: 'User ID is required' });
-    }
+    // IDOR Protection - Item 2: Always enforce authenticated user's ID
+    const userId = (req.user?.role === 'admin' && (req.query.userId || req.params.userId))
+      ? (req.query.userId || req.params.userId)
+      : req.user.id;
 
     const notifications = await Notification.find({ userId }).sort({ createdAt: -1 });
     const unreadCount = await Notification.countDocuments({ userId, read: false });
@@ -59,10 +59,10 @@ const getNotifications = async (req, res) => {
 
 const getUserUnreadCount = async (req, res) => {
   try {
-    const userId = req.query.userId || req.user?.id;
-    if (!userId) {
-      return res.status(400).json({ success: false, message: 'User ID is required' });
-    }
+    // IDOR Protection - Item 2: Always enforce authenticated user's ID
+    const userId = (req.user?.role === 'admin' && req.query.userId)
+      ? req.query.userId
+      : req.user.id;
 
     const count = await Notification.countDocuments({ userId, read: false });
 
@@ -79,18 +79,22 @@ const getUserUnreadCount = async (req, res) => {
 const markAsRead = async (req, res) => {
   try {
     const { id } = req.params;
+    const userId = req.user.id;
     
-    // We are expecting MongoDB _id here. Since original code might use a string id, let's try findById or findOne
     let notif = null;
-    if (id.length === 24) {
+    if (typeof id === 'string' && id.length === 24) {
       notif = await Notification.findById(id);
     } else {
-      // In case id is something else, not handled strictly here
       return res.status(404).json({ success: false, message: 'Notification not found' });
     }
 
     if (!notif) {
       return res.status(404).json({ success: false, message: 'Notification not found' });
+    }
+
+    // IDOR Protection - Item 2: Only owner or admin can mark notification as read
+    if (notif.userId !== userId && req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Access denied: not your notification' });
     }
 
     notif.read = true;
@@ -113,10 +117,8 @@ const markAsRead = async (req, res) => {
 
 const markAllAsRead = async (req, res) => {
   try {
-    const userId = req.body.userId || req.query.userId || req.user?.id;
-    if (!userId) {
-      return res.status(400).json({ success: false, message: 'User ID is required' });
-    }
+    // IDOR Protection - Item 2: Always enforce authenticated user's ID
+    const userId = req.user.id;
 
     await Notification.updateMany({ userId, read: false }, { read: true });
 
@@ -136,15 +138,23 @@ const markAllAsRead = async (req, res) => {
 const deleteNotification = async (req, res) => {
   try {
     const { id } = req.params;
+    const userId = req.user.id;
     
-    let notif = null;
-    if (id.length === 24) {
-      notif = await Notification.findByIdAndDelete(id);
+    if (!id || typeof id !== 'string' || id.length !== 24) {
+      return res.status(404).json({ success: false, message: 'Notification not found' });
     }
-    
+
+    const notif = await Notification.findById(id);
     if (!notif) {
       return res.status(404).json({ success: false, message: 'Notification not found' });
     }
+
+    // IDOR Protection - Item 2: Only owner or admin can delete notification
+    if (notif.userId !== userId && req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Access denied: not your notification' });
+    }
+
+    await Notification.findByIdAndDelete(id);
 
     if (ioInstance && notif.userId) {
       const unreadCount = await Notification.countDocuments({ userId: notif.userId, read: false });
@@ -162,10 +172,8 @@ const deleteNotification = async (req, res) => {
 
 const clearAll = async (req, res) => {
   try {
-    const userId = req.body.userId || req.query.userId || req.user?.id;
-    if (!userId) {
-      return res.status(400).json({ success: false, message: 'User ID is required' });
-    }
+    // IDOR Protection - Item 2: Always enforce authenticated user's ID
+    const userId = req.user.id;
 
     await Notification.deleteMany({ userId });
 
@@ -193,3 +201,4 @@ module.exports = {
   deleteNotification,
   clearAll,
 };
+

@@ -4,11 +4,15 @@ const { Server } = require('socket.io');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
+const jwt = require('jsonwebtoken');
 const path = require('path');
 const os = require('os');
 require('dotenv').config(); // ✅ Load .env variables
 const connectDB = require('./config/mongodb'); // ✅ Import MongoDB connection
 const logger = require('./utils/logger');
+const noSqlSanitizer = require('./middleware/sanitize');
+const authMiddleware = require('./middleware/auth');
+const { adminMiddleware } = require('./middleware/auth');
 const { setSocketIO } = require('./controllers/notificationController');
 const { saveChatMessage } = require('./controllers/chatController');
 
@@ -21,6 +25,9 @@ const notificationRoutes = require('./routes/notificationRoutes');
 const app = express();
 const server = http.createServer(app);
 const PORT = process.env.PORT || 5000;
+
+// Enable reverse proxy trust for correct client IP detection in rate limiting (Item 9)
+app.set('trust proxy', 1);
 
 // ═══════════════════════════════════════════════════════════
 // CORS Configuration (shared between Express and Socket.IO)
@@ -49,7 +56,7 @@ const corsOptions = {
 };
 
 // ═══════════════════════════════════════════════════════════
-// SOCKET.IO SETUP
+// SOCKET.IO SETUP WITH AUTHENTICATION (Item 2 & 14)
 // ═══════════════════════════════════════════════════════════
 const io = new Server(server, {
   cors: corsOptions,
@@ -59,21 +66,47 @@ const io = new Server(server, {
 // Pass io instance to notification controller for real-time pushes
 setSocketIO(io);
 
+// Socket.io JWT Authentication Middleware
+io.use((socket, next) => {
+  const token = socket.handshake.auth?.token || socket.handshake.headers?.authorization?.split(' ')[1];
+  if (token) {
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret-key');
+      socket.user = { id: decoded.userId, email: decoded.email, role: decoded.role || 'user' };
+    } catch (err) {
+      console.warn('Socket connection token invalid, continuing as guest');
+    }
+  }
+  next();
+});
+
 io.on('connection', (socket) => {
   console.log(`🔌 Socket connected: ${socket.id}`);
 
   // User joins their personal room for notifications
+  // IDOR & Spoofing defense: Users can only join their own room unless admin
   socket.on('join', (userId) => {
-    if (userId) {
-      socket.join(`user-${userId}`);
-      console.log(`👤 User ${userId} joined room user-${userId}`);
+    if (socket.user && socket.user.id !== userId && socket.user.role !== 'admin') {
+      console.warn(`⚠️ Socket ${socket.id} attempted to join unauthorized room: user-${userId}`);
+      return;
+    }
+    const targetRoom = socket.user ? socket.user.id : userId;
+    if (targetRoom) {
+      socket.join(`user-${targetRoom}`);
+      console.log(`👤 User joined room user-${targetRoom}`);
     }
   });
 
   // Handle real-time chat messages
   socket.on('chat-message', async (data) => {
     try {
-      const { taskId, senderId, message } = data;
+      const { taskId, message } = data;
+      // Enforce sender identity from authenticated socket if available
+      const senderId = socket.user?.id || data.senderId;
+      if (!senderId) {
+        return socket.emit('chat-error', { message: 'Authentication required to send chat messages' });
+      }
+
       const savedMsg = await saveChatMessage(taskId, senderId, message);
 
       // Emit to both sender and receiver rooms
@@ -96,12 +129,29 @@ connectDB(); // ✅ Connect to MongoDB
 // ═══════════════════════════════════════════════════════════
 // MIDDLEWARE
 // ═══════════════════════════════════════════════════════════
-app.use(helmet());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// Helmet with strict Content Security Policy (Item 11: XSS protection)
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "https:"],
+      connectSrc: ["'self'", "ws:", "wss:"],
+      objectSrc: ["'none'"],
+      upgradeInsecureRequests: []
+    }
+  }
+}));
+
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 app.use(cors(corsOptions));
 
-// Rate limiting — global
+// NoSQL Injection Sanitizer (Item 14: Query your database)
+app.use(noSqlSanitizer);
+
+// Rate limiting — global (Item 9: Guess the login code / brute force defense)
 const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 200, // 200 requests per window per IP
@@ -145,6 +195,24 @@ app.get('/api/health', (req, res) => {
     status: 'ok',
     message: 'CodeDash API running with MongoDB Atlas',
     timestamp: new Date()
+  });
+});
+
+// ═══════════════════════════════════════════════════════════
+// ADMINISTRATIVE ROUTE PROTECTION (Item 1: Type /admin)
+// ═══════════════════════════════════════════════════════════
+app.get('/admin', (req, res) => {
+  res.status(403).json({
+    success: false,
+    message: 'Access denied: Admin dashboard is not publicly accessible.'
+  });
+});
+
+app.get('/api/admin', authMiddleware, adminMiddleware, (req, res) => {
+  res.json({
+    success: true,
+    message: 'Welcome to the CodeDash Admin API',
+    admin: req.user.email
   });
 });
 

@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const authMiddleware = require('../middleware/auth');
+const { adminMiddleware } = require('../middleware/auth');
 const { postTask, getOpenTasks, getTaskById, claimTask, submitProof, approveTask, checkAndResolveGhosting, autoResolveGhosting, deleteTask, rejectTask, searchTasks } = require('../controllers/taskController');
 const { validateTaskInput, validateProofInput } = require('../middleware/validation');
 
@@ -23,7 +24,10 @@ router.post('/delete', authMiddleware, deleteTask);
 router.post('/submit-proof', authMiddleware, validateProofInput, submitProof);
 router.post('/approve', authMiddleware, approveTask);
 router.post('/reject', authMiddleware, rejectTask);
-router.post('/check-ghosting', authMiddleware, checkAndResolveGhosting);
-router.post('/auto-resolve-ghosting', authMiddleware, autoResolveGhosting);
+
+// Item 1: Protected administrative actions requiring admin role
+router.post('/check-ghosting', authMiddleware, adminMiddleware, checkAndResolveGhosting);
+router.post('/auto-resolve-ghosting', authMiddleware, adminMiddleware, autoResolveGhosting);
 
 module.exports = router;
+
